@@ -1,0 +1,13 @@
+{% extends "base_layout.html" %}
+
+{% block content %}
+<h1 class="mt-3">Predictor</h1>
+<p>This is the Predictor page content.</p>
+<!-- Add your predictor form, instructions, etc. here -->
+{% endblock content %}
+
+{% block page_scripts %}
+<!-- Load page-specific JS (if any) -->
+<script src="{{ url_for('static', path='js/predictor.js') }}"></script>
+
+{% endblock page_scripts %}
