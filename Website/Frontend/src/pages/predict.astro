@@ -1,0 +1,10 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PredictionForm from '../components/PredictionForm';
+---
+
+<BaseLayout title="Predictor - PuneProp Predict">
+  <div class="container py-5">
+    <PredictionForm client:load />
+  </div>
+</BaseLayout>

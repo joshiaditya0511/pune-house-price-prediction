@@ -1,0 +1,104 @@
+---
+// src/components/Footer.astro
+const currentYear = new Date().getFullYear();
+const personalSiteUrl = "https://www.adityajoshi.in"; // <-- CHANGE THIS
+const linkedinUrl = "https://linkedin.com/in/joshiaditya0511"; // <-- CHANGE THIS
+const emailAddress = "joshiaditya0511@gmail.com"; // <-- CHANGE THIS
+
+const quickLinks = [
+  { href: "/", text: "Home" },
+  { href: "/predict", text: "Predictor" },
+  { href: "/insights", text: "Insights" },
+  { href: "/recommend", text: "Recommend" },
+  { href: "/about/project", text: "About Project" },
+  { href: "/about/model", text: "Model Training" },
+  { href: "/about/deployment", text: "Deployment" },
+];
+---
+
+<footer class="footer mt-auto pt-5 pb-4 bg-light border-top">
+  <div class="container">
+    <div class="row gy-4">
+      <!-- Project Name -->
+      <div class="col-lg-4 col-md-6">
+        <h5 class="fw-bold">PuneProp Predict</h5>
+        <p class="text-muted small">
+          AI-powered house price insights for Pune.
+        </p>
+      </div>
+
+      <!-- Quick Links -->
+      <div class="col-lg-4 col-md-6">
+        <h5 class="mb-3">Quick Links</h5>
+        <ul class="list-unstyled row row-cols-2">
+          {
+            quickLinks.map((link) => (
+              <li class="col mb-2">
+                <a href={link.href} class="link-secondary text-decoration-none">
+                  {link.text}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+
+      <!-- Connect -->
+      <div class="col-lg-4 col-md-12 text-lg-end">
+        <!-- Keep Connect title and icons together -->
+        <div>
+          <h5 class="mb-3">Connect with Me</h5>
+          <div class="d-flex justify-content-lg-end gap-3">
+            <a
+              href={`mailto:${emailAddress}`}
+              class="footer-social-link"
+              aria-label="Email"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <i class="bi bi-envelope-fill"></i>
+            </a>
+            <a
+              href={linkedinUrl}
+              class="footer-social-link"
+              aria-label="LinkedIn"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <i class="bi bi-linkedin"></i>
+            </a>
+            <a
+              href={personalSiteUrl}
+              class="footer-social-link"
+              aria-label="Personal Website"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <i class="bi bi-globe"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="my-4" />
+
+    <!-- Bottom Row: Copyright and Attribution -->
+    <div class="row">
+      <div class="col-md-6 text-center text-md-start">
+        <p class="small text-muted mb-0">
+          &copy; {currentYear} <a
+            href={personalSiteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="link-secondary">Aditya Joshi</a
+          >. All Rights Reserved.
+        </p>
+      </div>
+      <div class="col-md-6 text-center text-md-end">
+        <!-- Optional: Add built with Astro/Bootstrap here -->
+        <!-- <p class="small text-muted mb-0">Built with Astro & Bootstrap</p> -->
+      </div>
+    </div>
+  </div>
+</footer>

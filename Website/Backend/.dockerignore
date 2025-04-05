@@ -1,0 +1,31 @@
+# Git files
+.git/
+.gitignore
+
+# Python virtual environment (if you have one locally)
+.venv/
+venv/
+env/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE/Editor specific files
+.vscode/
+.idea/
+
+# Local artifacts/build directories (if any)
+build/
+dist/
+*.egg-info/
+
+# Any large datasets or files not needed in the final image
+# e.g., raw_data/
+# e.g., notebooks/

@@ -1,0 +1,115 @@
+---
+// src/components/Header.astro
+const currentPath = Astro.url.pathname;
+
+const navLinks = [
+  { href: "/predict", text: "Predictor" },
+  { href: "/insights", text: "Insights" },
+  { href: "/recommend", text: "Recommend" },
+];
+
+const aboutLinks = [
+  { href: "/about/project", text: "About the Project" },
+  { href: "/about/model", text: "Model Training" },
+  { href: "/about/deployment", text: "Deployment" },
+];
+---
+
+<nav class="navbar navbar-expand-lg fixed-top bg-body-tertiary shadow-sm">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="/">PuneProp Predict</a>
+    <button
+      class="navbar-toggler"
+      type="button"
+      data-bs-toggle="offcanvas"
+      data-bs-target="#offcanvasNavbar"
+      aria-controls="offcanvasNavbar"
+      aria-label="Toggle navigation"
+    >
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div
+      class="offcanvas offcanvas-end"
+      tabindex="-1"
+      id="offcanvasNavbar"
+      aria-labelledby="offcanvasNavbarLabel"
+    >
+      <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="offcanvasNavbarLabel">Menu</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="offcanvas"
+          aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body">
+        <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+          {
+            navLinks.map((link) => (
+              <li class="nav-item">
+                <a
+                  class:list={[
+                    "nav-link",
+                    { active: currentPath === link.href },
+                  ]}
+                  aria-current={currentPath === link.href ? "page" : false}
+                  href={link.href}
+                >
+                  {link.text}
+                </a>
+              </li>
+            ))
+          }
+          <li class="nav-item dropdown">
+            <a
+              class:list={[
+                "nav-link dropdown-toggle",
+                {
+                  active: aboutLinks.some(
+                    (link) => currentPath === link.href
+                  ),
+                },
+              ]}
+              href="#"
+              role="button"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              About
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              {
+                aboutLinks.map((link) => (
+                  <li>
+                    <a
+                      class:list={[
+                        "dropdown-item",
+                        { active: currentPath === link.href },
+                      ]}
+                      href={link.href}
+                    >
+                      {link.text}
+                    </a>
+                  </li>
+                ))
+              }
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<style lang="scss">
+  // Add specific navbar overrides here if needed
+  // Example: Customize dropdown menu background
+  // .dropdown-menu {
+  //   background-color: #f0f0f0;
+  // }
+
+  // Ensure offcanvas background matches theme
+  .offcanvas {
+    background-color: var(--bs-body-bg);
+  }
+</style>

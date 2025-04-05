@@ -1,0 +1,89 @@
+// src/styles/global.scss
+
+// 1. Import Google Font (Lora)
+@import url("https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap");
+
+// 2. Define custom variables (optional, but good practice)
+$primary-font: "Lora", serif;
+$body-bg: #fffefa; // Soft yellowish-white
+$navbar-bg: #ffffff; // Keep navbar slightly brighter or same as body
+$footer-bg: #f8f9fa; // Standard light grey for footer contrast
+
+// 3. Import Bootstrap SCSS
+
+// Option B: Import only necessary parts (more optimized - recommended for production)
+
+@import "bootstrap/scss/functions";
+@import "bootstrap/scss/variables";
+@import "bootstrap/scss/variables-dark"; // If you plan dark mode
+
+// Add any custom variable overrides HERE, before importing the rest
+$body-bg: $body-bg;
+$font-family-base: $primary-font;
+$navbar-light-bg: $navbar-bg; // Customize navbar bg if needed
+$footer-bg: $footer-bg;
+
+@import "bootstrap/scss/maps";
+@import "bootstrap/scss/mixins";
+@import "bootstrap/scss/root";
+@import "bootstrap/scss/utilities";
+@import "bootstrap/scss/reboot";
+@import "bootstrap/scss/type";
+// @import "bootstrap/scss/images";
+@import "bootstrap/scss/containers";
+@import "bootstrap/scss/grid";
+// @import "bootstrap/scss/tables";
+@import "bootstrap/scss/forms";
+@import "bootstrap/scss/buttons";
+@import "bootstrap/scss/transitions";
+@import "bootstrap/scss/dropdown";
+// @import "bootstrap/scss/button-group";
+@import "bootstrap/scss/nav";
+@import "bootstrap/scss/navbar"; // Needed for navbar
+// @import "bootstrap/scss/card";
+// @import "bootstrap/scss/accordion";
+// @import "bootstrap/scss/breadcrumb";
+// @import "bootstrap/scss/pagination";
+// @import "bootstrap/scss/badge";
+// @import "bootstrap/scss/alert";
+// @import "bootstrap/scss/progress";
+@import "bootstrap/scss/list-group";
+// @import "bootstrap/scss/close";
+// @import "bootstrap/scss/toasts";
+// @import "bootstrap/scss/modal";
+// @import "bootstrap/scss/tooltip";
+// @import "bootstrap/scss/popover";
+// @import "bootstrap/scss/carousel";
+// @import "bootstrap/scss/spinners";
+@import "bootstrap/scss/offcanvas"; // Needed for mobile navbar
+// @import "bootstrap/scss/placeholders";
+@import "bootstrap/scss/helpers";
+@import "bootstrap/scss/utilities/api";
+
+// Import Bootstrap Icons CSS
+@import "bootstrap-icons/font/bootstrap-icons.css";
+
+
+// 4. Add custom global styles
+body {
+  font-family: $primary-font;
+  background-color: $body-bg; // Applied via Bootstrap variables if using Option B
+}
+
+// Custom styles for footer icons if needed
+.footer-social-link {
+  font-size: 1.5rem; // Adjust icon size
+  color: var(--bs-secondary-color); // Use Bootstrap's secondary text color
+  text-decoration: none;
+  transition: color 0.2s ease-in-out;
+
+  &:hover {
+    color: var(--bs-primary); // Change color on hover
+  }
+}
+
+// Ensure footer stays at bottom
+// Apply d-flex flex-column min-vh-100 to body in BaseLayout.astro
+
+// Import PropertyCard styles
+@import "./PropertyCard.scss";
