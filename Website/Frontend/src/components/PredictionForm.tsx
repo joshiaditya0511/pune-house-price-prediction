@@ -78,7 +78,7 @@ const PredictionForm: React.FC = () => {
     // --- Submit to price prediction API ---
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/predict", {
+      const response = await fetch("http://phpp-api.adityajoshi.in/predict", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -103,7 +103,7 @@ const PredictionForm: React.FC = () => {
   const fetchRecommendations = async (requestData: any) => {
     setLoadingRecommendations(true);
     try {
-      const response = await fetch("http://localhost:8000/recommend", {
+      const response = await fetch("http://phpp-api.adityajoshi.in/recommend", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

@@ -1,0 +1,15 @@
+version: '3.8' # Use a recent version
+
+services:
+  fastapi_app:
+    build: . # Build the image from the Dockerfile in the current directory
+    image: house-predictor-app-local # Give the locally built image a name
+    container_name: house-predictor-container # Assign a fixed name to the container
+    restart: always # Automatically restart the container if it stops or on server reboot
+    ports:
+      # Map port 8000 on the HOST to port 8000 in the CONTAINER
+      # Nginx will connect to localhost:8000 on the host
+      - "127.0.0.1:8000:8000"
+    # Optional: Define environment variables if your app needs them
+    # environment:
+    #   - SOME_VARIABLE=some_value
