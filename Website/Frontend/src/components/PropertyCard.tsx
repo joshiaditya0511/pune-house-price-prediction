@@ -155,7 +155,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property }) => {
             </div>
           </div>
           {/* <button className="view-details-btn">View Details</button> */}
-          <a className="view-details-btn" href={property.url} target="_blank">View Details</a>
+          <a className="view-details-btn" href={property.url} target="_blank" style={{textDecoration: 'none'}}>View Details</a>
           <div className="last-updated">
             Last updated: {property.lastUpdatedDate}
           </div>
