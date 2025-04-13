@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import options from "../data/options_iteration_2.json";
+import options from "../data/options_iteration_3.json";
 import PropertyCard from "./PropertyCard";
 import type { Property } from "../types";
 

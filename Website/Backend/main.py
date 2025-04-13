@@ -42,13 +42,13 @@ app.add_middleware(
 )
 
 # --- Configuration & Artifact Paths ---
-PREDICTION_MODEL_FILE = "artifacts/prediction/lgb_model_iteration_2.pkl"
-PREDICTION_PIPELINE_FILE = "artifacts/prediction/final_preprocessor_pipeline_iteration_2.pkl"
+PREDICTION_MODEL_FILE = "artifacts/prediction/lgb_model_iteration_3.pkl"
+PREDICTION_PIPELINE_FILE = "artifacts/prediction/final_preprocessor_pipeline_iteration_3.pkl"
 
-RECOMMENDATION_NN_MODEL_FILE = 'artifacts/recommendation/nearest_neighbors_model.joblib'
-RECOMMENDATION_PREPROCESSOR_FILE = 'artifacts/recommendation/recommendation_preprocessor.joblib'
+RECOMMENDATION_NN_MODEL_FILE = 'artifacts/recommendation/nearest_neighbors_model_iteration_3.joblib'
+RECOMMENDATION_PREPROCESSOR_FILE = 'artifacts/recommendation/recommendation_preprocessor_iteration_3.joblib'
 # This file contains the vectors used to fit the NN model, with Property IDs as index
-RECOMMENDATION_VECTORS_FILE = 'artifacts/recommendation/property_vectors.pkl'
+RECOMMENDATION_VECTORS_FILE = 'artifacts/recommendation/property_vectors_iteration_3.pkl'
 # This file contains the full metadata for all properties, indexed by Property ID
 RECOMMENDATION_METADATA_FILE = 'artifacts/recommendation/recommendations.pkl'
 
