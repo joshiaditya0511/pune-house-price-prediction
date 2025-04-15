@@ -1,0 +1,404 @@
+---
+// src/pages/about.astro
+// Assuming you have a base layout, adjust the import path as needed
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const pageTitle = "About the Project";
+---
+
+<BaseLayout title="About - PuneProp Predict">
+  <div class="container py-5">
+  <h1>{pageTitle}</h1>
+
+  <p>
+    Welcome! This tool provides estimated prices for residential properties in
+    Pune, India, and recommends similar properties based on user-defined
+    features using machine learning.
+  </p>
+
+  <h2>Overview</h2>
+
+  <p>
+    This website aims to provide realistic house price estimates for Pune
+    properties based on various characteristics like area, number of
+    bedrooms/bathrooms, age, and location. It also suggests similar properties
+    from a scraped dataset.
+  </p>
+
+  <h3>Key Features:</h3>
+  <ul>
+    <li>
+      <strong>ML-Powered Price Prediction:</strong> Utilizes a trained LightGBM
+      model (achieving R² \( \approx 0.93 \), Median APE \( \approx 11 \% \))
+      to estimate prices based on user inputs.
+    </li>
+    <li>
+      <strong>Nearest Neighbor Recommendations:</strong> Finds and displays
+      similar properties from the dataset based on feature similarity to the
+      user's query.
+    </li>
+  </ul>
+
+  <p>
+    The system is built with a modern decoupled frontend and backend
+    architecture.
+  </p>
+
+  <h2>How It Works (Behind the Scenes)</h2>
+
+  <p>When you request a prediction and recommendations via the web interface:</p>
+  <ol>
+    <li>
+      <strong>Frontend Interaction:</strong> You input property features into the
+      form on this website (built with Astro.js and React).
+    </li>
+    <li>
+      <strong>API Communication:</strong> The website sends your input data to
+      our backend API (hosted separately for efficiency). It first requests the
+      price prediction, then requests recommendations based on the same features.
+    </li>
+    <li>
+      <strong>Backend Processing (FastAPI):</strong>
+      <ul>
+        <li>
+          Our backend server keeps the necessary machine learning models
+          (LightGBM for prediction, NearestNeighbors for recommendations),
+          preprocessing steps, and property data loaded in memory for fast
+          responses.
+        </li>
+        <li>
+          For prediction, it preprocesses your input, feeds it to the LightGBM
+          model, and gets the price.
+        </li>
+        <li>
+          For recommendations, it preprocesses the input (excluding locality name
+          for broader matching), queries the NearestNeighbors model to find
+          similar properties, and retrieves their details from our dataset.
+        </li>
+      </ul>
+    </li>
+    <li>
+      <strong>Results Display:</strong> The website receives the predicted price
+      and recommendation details from the backend and updates the page to show
+      you the results.
+    </li>
+  </ol>
+
+  <h2>Methodology: Building the Models</h2>
+
+  <p>
+    This section details the offline steps taken to acquire data, build the
+    models, and prepare the necessary artifacts used by the backend API during
+    runtime.
+  </p>
+
+  <h3>Data Acquisition</h3>
+  <ul>
+    <li>
+      <strong>Source:</strong> Over 30,000 property listings were collected from
+      the Pune section of <a
+        href="https://magicbricks.com"
+        target="_blank"
+        rel="noopener noreferrer">MagicBricks.com</a
+      >.
+    </li>
+    <li>
+      <strong>Technique:</strong> Due to anti-scraping measures, Selenium was
+      used to automate browser interactions and target an internal API endpoint
+      (discovered via dev tools) to scrape property data efficiently into JSON
+      format.
+    </li>
+  </ul>
+
+  <h3>Data Preprocessing & EDA</h3>
+  <ul>
+    <li>
+      <strong>Initial Structuring:</strong> Raw JSON data, containing
+      MagicBricks-specific semantics, was parsed. Relevant information was
+      extracted and transformed into a structured tabular format (CSV) using
+      Pandas.
+    </li>
+    <li>
+      <strong>Data Cleaning:</strong> Text fields were cleaned using Pandas
+      string methods and regular expressions. Obvious errors and non-statistical
+      outliers (e.g., impossible values) were identified and removed based on
+      domain understanding. Statistical outliers were generally retained as they
+      might represent valid high-end or low-end market segments.
+    </li>
+    <li>
+      <strong>Missing Data Handling:</strong> For most features ultimately used
+      in the model, various imputation strategies (KNNImputer, IterativeImputer,
+      SimpleImputer) were tested. Their performance (MAE) was evaluated against
+      the non-null portion of the data, and the best-performing method was
+      chosen for each feature. The <code>carpetArea</code> feature exhibited a
+      strong linear correlation with <code>coveredArea</code>,
+      <code>bedrooms</code>, and <code>bathrooms</code>. Consequently, missing
+      <code>carpetArea</code> values were imputed using a Linear Regression model
+      trained on the subset of data where all these features were present.
+    </li>
+    <li>
+      <strong>Exploratory Data Analysis (EDA):</strong> The
+      <code>ydata-profiling</code> library was used extensively for generating
+      comprehensive initial reports covering univariate and bivariate analysis,
+      correlations, and missing value summaries. Manual analysis using Pandas
+      and visualization libraries was performed where
+      <code>ydata-profiling</code> needed supplementation or deeper dives.
+    </li>
+  </ul>
+
+  <h3>Feature Engineering & Selection</h3>
+  <p>
+    A multi-stage process was used to select the most relevant features for the
+    prediction model:
+  </p>
+  <ol>
+    <li>
+      <strong>Practicality Filter:</strong> Features unavailable at prediction
+      time (e.g., <code>nameOfSociety</code>, <code>developerName</code>) or
+      requiring information a typical user wouldn't provide (e.g.,
+      <code>maintenanceCharges</code>) were excluded. The goal was a generalized
+      model.
+    </li>
+    <li>
+      <strong>Variance & Cardinality Check:</strong> Features with very low
+      variance were dropped. Categorical features where over 95% of values
+      belonged to a single category were also removed as they offered little
+      predictive power.
+    </li>
+    <li>
+      <strong>Quantitative Importance Scoring:</strong> A comprehensive
+      scoreboard approach was implemented to rank remaining features based on
+      various metrics:
+      <ul>
+        <li>
+          <strong>Statistics-Based:</strong> F-regression, R-regression
+          (correlation), Mutual Information scores.
+        </li>
+        <li>
+          <strong>Model-Based Importance:</strong> Feature importances derived
+          from trained Linear Regression, Random Forest, XGBoost, and Decision
+          Tree models.
+        </li>
+        <li>
+          <strong>Permutation Importance:</strong> Assessed feature importance by
+          shuffling feature values and measuring the impact on model performance
+          (tested with Random Forest, XGBoost, Decision Tree).
+        </li>
+        <li>
+          <strong>SHAP Importance:</strong> Calculated SHAP values to understand
+          feature contributions (tested with Linear Regression, Random Forest,
+          XGBoost, Decision Tree).
+        </li>
+      </ul>
+    </li>
+    <li>
+      <strong>Final Selection:</strong> Scores from all tests were aggregated,
+      and features with consistently high importance across multiple methods
+      were selected for the final model.
+    </li>
+  </ol>
+
+  <h3>Price Prediction Model Training</h3>
+  <ul>
+    <li>
+      <strong>Data Split:</strong> The preprocessed data was split into training
+      and testing sets.
+    </li>
+    <li>
+      <strong>Model Evaluation Metrics:</strong> Due to skewness observed in the
+      target variable (price), standard Mean Absolute Error (MAE) and Mean
+      Absolute Percentage Error (MAPE) were deemed less representative. Instead,
+      the evaluation focused on: R² Score, Median Absolute Error (MedAE), Median
+      Absolute Percentage Error (MedAPE), and Analysis of error quantiles. A
+      composite score combining these metrics was used for model comparison.
+    </li>
+    <li>
+      <strong>Hyperparameter Tuning:</strong> <code>GridSearchCV</code> was
+      employed on the training set to find the optimal hyperparameters for
+      various candidate models (e.g., Linear Regression, Random Forest, XGBoost
+      - implied).
+    </li>
+    <li>
+      <strong>Final Model Training & Testing:</strong> The best-performing model
+      (LightGBM) with its optimal hyperparameters (identified via GridSearchCV)
+      was retrained on the entire training dataset. Its final performance was
+      then evaluated on the held-out test set.
+    </li>
+    <li>
+      <strong>Results:</strong> The final model achieved an R² score of \( 0.93
+      \), a Median Absolute Error of approximately ₹8.3 Lakhs, and a Median
+      Absolute Percentage Error of \( 11.3 \% \) on the test data. The final
+      preprocessing pipeline and trained LightGBM model were saved using pickle
+      and joblib.
+    </li>
+  </ul>
+
+  <h3>Recommendation System Development</h3>
+  <ul>
+    <li>
+      <strong>Approach:</strong> Lacking user interaction history, a
+      content-based filtering approach was chosen. The system recommends
+      properties from the scraped dataset that are most similar to the user's
+      input query.
+    </li>
+    <li>
+      <strong>Features Used:</strong> The same features selected for the price
+      prediction model were used for finding neighbors, <em>except</em> for
+      <code>LocalityName</code>. Including locality would require one-hot
+      encoding, drastically increasing dimensionality and potentially reducing
+      the effectiveness of distance-based neighbor searches (curse of
+      dimensionality).
+    </li>
+    <li>
+      <strong>Implementation:</strong> Relevant features were appropriately
+      encoded (e.g., numerical scaling, categorical encoding if any non-OHE
+      categories remained). Scikit-learn's <code>NearestNeighbors</code> using a
+      Euclidean distance metric was fitted on the feature vectors of all
+      properties in the dataset (train + test combined). Metadata (like price,
+      area, address snippet, image URL - if available) for all properties was
+      stored separately, indexed to match the <code>NearestNeighbors</code> data,
+      allowing retrieval of details for the recommended properties.
+    </li>
+  </ul>
+
+  <h2>Technology Stack</h2>
+  <ul>
+    <li>
+      <strong>Data Science & ML:</strong> Python, Pandas, Scikit-learn,
+      Selenium, <code>ydata-profiling</code>, Jupyter Notebooks
+    </li>
+    <li><strong>Backend:</strong> FastAPI, Python</li>
+    <li><strong>Frontend:</strong> Astro.js, React, Bootstrap</li>
+    <li>
+      <strong>Deployment:</strong> Docker, Docker Compose, AWS EC2 (Ubuntu),
+      NGINX, Vercel
+    </li>
+    <li><strong>Version Control:</strong> Git, GitHub</li>
+  </ul>
+
+  <h2>Deployment Architecture</h2>
+  <p>The application follows a decoupled frontend-backend architecture:</p>
+  <ul>
+    <li>
+      <strong>Frontend:</strong>
+      <ul>
+        <li>
+          This website is a static multi-page application built with Astro.js
+          and React.
+        </li>
+        <li>Hosted on Vercel.</li>
+        <li>
+          Accessible at: <a
+            href="https://pune.adityajoshi.in"
+            target="_blank"
+            rel="noopener noreferrer">https://pune.adityajoshi.in</a
+          >
+        </li>
+      </ul>
+    </li>
+    <li>
+      <strong>Backend:</strong>
+      <ul>
+        <li>
+          A FastAPI application serving the prediction and recommendation models
+          via a REST API.
+        </li>
+        <li>
+          Deployed on an AWS EC2 instance using Docker, with NGINX as a reverse
+          proxy.
+        </li>
+        <li>
+          Accessible via a dedicated subdomain (primarily for this frontend's
+          use).
+        </li>
+      </ul>
+    </li>
+  </ul>
+
+  <h2>Future Enhancements</h2>
+  <p>
+    This project is under continuous development. Here are some planned
+    improvements and areas for future exploration:
+  </p>
+
+  <h3>Data & Automation:</h3>
+  <ul>
+    <li>
+      <strong>CI/CD for Backend:</strong> Implement CI/CD pipelines to automate
+      backend deployments.
+    </li>
+    <li>
+      <strong>Scraping Automation (Challenges):</strong> Explore possibilities
+      for automating data scraping, acknowledging current challenges with site
+      structure and anti-bot measures.
+    </li>
+    <li>
+      <strong>Periodic Data Refresh:</strong> Establish a regular cadence for
+      manually re-scraping data to keep predictions and recommendations current.
+    </li>
+  </ul>
+
+  <h3>Modeling & Feature Engineering:</h3>
+  <ul>
+    <li>
+      <strong>Tiered Prediction Models:</strong> Develop multiple models based on
+      user input detail.
+    </li>
+    <li>
+      <strong>Locality Analysis & Enhancement:</strong> Improve handling of
+      locality names, measure their impact, identify similar localities, and
+      investigate advanced encoding techniques.
+    </li>
+    <li>
+      <strong>Incorporate Amenities:</strong> Add property amenities as features.
+    </li>
+  </ul>
+
+  <h3>Recommendation System:</h3>
+  <ul>
+    <li>
+      <strong>Optimized Vector Search:</strong> Explore Approximate Nearest
+      Neighbor (ANN) libraries for scalability.
+    </li>
+    <li>
+      <strong>Refined Similarity Matching:</strong> Experiment with weighted
+      features, distance thresholding, and locality-specific options.
+    </li>
+  </ul>
+
+  <h3>Deployment & Architecture:</h3>
+  <ul>
+    <li>
+      <strong>Explore Client-Side Computation (WebAssembly):</strong> Investigate
+      running models (prediction/recommendation) directly in the browser using
+      Wasm.
+    </li>
+  </ul>
+
+  <h3>New Features: Insights Page</h3>
+  <ul>
+    <li>
+      <strong>Dynamic User-Based Insights:</strong> Generate insights specific to
+      user's selected locality, allow comparisons, potentially using LLMs with
+      RAG.
+    </li>
+    <li>
+      <strong>Static Market Insights:</strong> Add pre-computed analyses (premium
+      localities, density, feature impact visualizations using SHAP/LIME).
+    </li>
+  </ul>
+
+  <h3>Frontend UI/UX & SEO:</h3>
+  <ul>
+    <li>
+      <strong>UI Polish:</strong> Improve navbar, price formatting, form
+      validation display, loading indicators, error handling, and property card
+      details.
+    </li>
+    <li>
+      <strong>SEO & Metadata:</strong> Implement standard SEO practices (meta
+      tags, Open Graph, sitemap, etc.).
+    </li>
+  </ul>
+</div>
+</BaseLayout>
