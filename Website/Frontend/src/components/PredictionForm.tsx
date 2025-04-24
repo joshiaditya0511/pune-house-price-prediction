@@ -1,7 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import * as ort from "onnxruntime-web"; // Import ONNX Runtime Web
 import options from "../data/options_iteration_3.json";
 import PropertyCard from "./PropertyCard";
 import type { Property } from "../types";
+
+// --- Define the path to your model in the public directory ---
+const MODEL_URL = "/prediction_pipeline_iteration_3.onnx";
 
 const PredictionForm: React.FC = () => {
   // State for each form field
@@ -19,21 +23,57 @@ const PredictionForm: React.FC = () => {
   );
   const [furnished, setFurnished] = useState(options.furnished[0]);
 
-  // States for UI feedback
+  // --- UI Feedback States ---
   const [errorMsg, setErrorMsg] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [prediction, setPrediction] = useState("");
+  const [loading, setLoading] = useState(false); // For prediction process
+  const [prediction, setPrediction] = useState<string | null>(null); // Use null initially
+
+  // --- ONNX Session State ---
+  const [onnxSession, setOnnxSession] =
+    useState<ort.InferenceSession | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(true); // For model loading
+  const [sessionError, setSessionError] = useState<string | null>(null);
   
   // State for recommendations
   const [recommendations, setRecommendations] = useState<Property[]>([]);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const [recommendationsError, setRecommendationsError] = useState("");
 
+  // --- Effect to Load ONNX Model ---
+  useEffect(() => {
+    const loadModel = async () => {
+      try {
+        setSessionLoading(true);
+        setSessionError(null);
+        console.log("Attempting to load ONNX model...");
+        // Create session with WASM backend preference
+        const session = await ort.InferenceSession.create(MODEL_URL, {
+          executionProviders: ["wasm"], // Prioritize WASM
+          // Optional: Graph optimization level
+          // graphOptimizationLevel: 'all',
+        });
+        setOnnxSession(session);
+        console.log("ONNX Inference Session created successfully.");
+      } catch (e) {
+        console.error("Error loading ONNX session:", e);
+        setSessionError(
+          `Failed to load the prediction model. ${
+            e instanceof Error ? e.message : String(e)
+          }`
+        );
+      } finally {
+        setSessionLoading(false);
+      }
+    };
+    loadModel();
+  }, []); // Empty dependency array ensures this runs only once on mount
+
+  // --- Handle Form Submission ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
-    setPrediction("");
-    setRecommendations([]);
+    setPrediction(null); // Clear previous prediction
+    setRecommendations([]); // Clear recommendations
     setRecommendationsError("");
 
     // --- Input/form validation ---
@@ -62,42 +102,126 @@ const PredictionForm: React.FC = () => {
       return;
     }
 
-    // --- Build the payload ---
-    const requestData = {
-      carpetArea,
-      floorNumber,
-      totalFloorNumber,
-      bedrooms,
-      bathrooms,
-      localityName,
-      transactionType,
-      furnished,
-      ageofcons
-    };
-
-    // --- Submit to price prediction API ---
-    setLoading(true);
-    try {
-      const response = await fetch("https://phpp-api.adityajoshi.in/predict", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(requestData)
-      });
-      if (!response.ok) {
-        throw new Error("API request failed");
-      }
-      const data = await response.json();
-      setPrediction(`Estimated Price: ₹ ${data.predictedPrice}`);
-
-      // After successful prediction, fetch recommendations
-      fetchRecommendations(requestData);
-    } catch (error) {
-      setErrorMsg("Prediction failed. Please try again later.");
-      setLoading(false);
+    // --- Check if ONNX Session is Ready ---
+    if (!onnxSession) {
+      setErrorMsg(
+        sessionError || "Model is not loaded yet. Please wait or refresh."
+      );
+      return;
     }
-  };
+
+  //   // --- Build the payload ---
+  //   const requestData = {
+  //     carpetArea,
+  //     floorNumber,
+  //     totalFloorNumber,
+  //     bedrooms,
+  //     bathrooms,
+  //     localityName,
+  //     transactionType,
+  //     furnished,
+  //     ageofcons
+  //   };
+
+  //   // --- Submit to price prediction API ---
+  //   setLoading(true);
+  //   try {
+  //     const response = await fetch("https://phpp-api.adityajoshi.in/predict", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json"
+  //       },
+  //       body: JSON.stringify(requestData)
+  //     });
+  //     if (!response.ok) {
+  //       throw new Error("API request failed");
+  //     }
+  //     const data = await response.json();
+  //     setPrediction(`Estimated Price: ₹ ${data.predictedPrice}`);
+
+  //     // After successful prediction, fetch recommendations
+  //     fetchRecommendations(requestData);
+  //   } catch (error) {
+  //     setErrorMsg("Prediction failed. Please try again later.");
+  //     setLoading(false);
+  //   }
+  // };
+
+      // --- Start Prediction Process ---
+      setLoading(true);
+      try {
+        // --- Build the Input Tensor ---
+        // Keys MUST match the 'initial_types' names used during Python conversion
+        // Data types MUST match (String -> string, Int64 -> bigint)
+        // Shape is [1, 1] for a single prediction
+        const inputTensor = {
+          localityName: new ort.Tensor("string", [localityName], [1, 1]),
+          carpetArea: new ort.Tensor("int64", [BigInt(carpetArea)], [1, 1]),
+          floorNumber: new ort.Tensor("int64", [BigInt(floorNumber)], [1, 1]),
+          totalFloorNumber: new ort.Tensor(
+            "int64",
+            [BigInt(totalFloorNumber)],
+            [1, 1]
+          ),
+          transactionType: new ort.Tensor(
+            "string",
+            [transactionType],
+            [1, 1]
+          ),
+          furnished: new ort.Tensor("string", [furnished], [1, 1]),
+          bedrooms: new ort.Tensor("int64", [BigInt(bedrooms)], [1, 1]),
+          bathrooms: new ort.Tensor("int64", [BigInt(bathrooms)], [1, 1]),
+          ageofcons: new ort.Tensor("string", [ageofcons], [1, 1]),
+        };
+  
+        console.log("Running inference with input:", inputTensor);
+  
+        // --- Run Inference ---
+        const results = await onnxSession.run(inputTensor);
+        console.log("Inference results:", results);
+  
+        // --- Process Output ---
+        // Get the name of the output node (usually the first one for sklearn pipelines)
+        const outputName = onnxSession.outputNames[0];
+        const outputTensor = results[outputName];
+  
+        if (!outputTensor) {
+          throw new Error(`Output tensor '${outputName}' not found in results.`);
+        }
+  
+        // Data is typically a Float32Array for regression
+        const predictedPrice = (outputTensor.data as Float32Array)[0];
+  
+        // Format and set the prediction state
+        const formattedPrice = Math.round(predictedPrice).toLocaleString("en-IN");
+        setPrediction(`Estimated Price: ₹ ${formattedPrice}`);
+  
+        // --- Fetch Recommendations (if needed) ---
+        // This part remains the same if it depends only on input features
+        const requestData = {
+          carpetArea,
+          floorNumber,
+          totalFloorNumber,
+          bedrooms,
+          bathrooms,
+          localityName,
+          transactionType,
+          furnished,
+          ageofcons,
+        };
+        // If fetchRecommendations needs the predicted price, pass it:
+        // fetchRecommendations(requestData, predictedPrice);
+        fetchRecommendations(requestData); // Assuming it only needs input features
+      } catch (error) {
+        console.error("Error during prediction:", error);
+        setErrorMsg(
+          `Prediction failed. ${error instanceof Error ? error.message : String(error)}`
+        );
+        setPrediction(null); // Clear prediction on error
+      } finally {
+        setLoading(false); // Stop loading indicator
+      }
+    };
 
   // Separate function to fetch recommendations
   const fetchRecommendations = async (requestData: any) => {
