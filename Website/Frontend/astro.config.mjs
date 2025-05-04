@@ -5,6 +5,10 @@ import vercel from '@astrojs/vercel';
 import react from '@astrojs/react';
 // import sitemap from "@astrojs/sitemap"; // Example: if you have sitemap
 
+// Import the plugins
+import wasm from "vite-plugin-wasm";
+import topLevelAwait from "vite-plugin-top-level-await";
+
 // https://astro.build/config
 export default defineConfig({
   output: "static",
@@ -17,4 +21,10 @@ export default defineConfig({
   },
   integrations: [react()],
   // site: "https://your-deployment-url.vercel.app", // Replace with your actual URL
+  vite: {
+    plugins: [wasm(), topLevelAwait()],
+    optimizeDeps: {
+      exclude: ["voy-search"],
+    }
+  },
 });

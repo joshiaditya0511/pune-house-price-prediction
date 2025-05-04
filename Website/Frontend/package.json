@@ -19,6 +19,13 @@
     "onnxruntime-web": "^1.21.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "sass": "^1.86.0"
+    "rxdb": "^16.11.0",
+    "rxjs": "^7.8.2",
+    "sass": "^1.86.0",
+    "voy-search": "^0.6.3"
+  },
+  "devDependencies": {
+    "vite-plugin-top-level-await": "^1.5.0",
+    "vite-plugin-wasm": "^3.4.1"
   }
 }
