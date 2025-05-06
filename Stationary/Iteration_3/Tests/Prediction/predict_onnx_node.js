@@ -4,7 +4,7 @@ const fs = require("fs");
 
 // --- Configuration ---
 const MODEL_PATH =
-  "../PipelinesAndModels/full_pipeline_lgbm_pune_prices.onnx";
+  "../../PipelinesAndModels/prediction_pipeline_iteration_3.onnx";
 const TEST_DATA_JSON_PATH = "test_data_x.json";
 const PREDICTIONS_JS_PATH = "onnx_js_predictions.json";
 

@@ -1,33 +1,28 @@
-import React, { useState, useEffect, useCallback } from "react"; // Added useCallback
-import * as ort from "onnxruntime-web";
-import {
-  createRxDatabase,
-  addRxPlugin,
-  RxDatabase, // Import RxDatabase type
-  RxCollection, // Import RxCollection type
-} from "rxdb";
-// import { getRxStorageLocalstorage } from 'rxdb/plugins/storage-localstorage';
-import { getRxStorageMemory } from 'rxdb/plugins/storage-memory';
-import {
-  // RxDBVectorStorePlugin,
-  cosineSimilarity,
-} from "rxdb/plugins/vector";
-import { sortByObjectNumberProperty } from "rxdb"; // Core utility
-
+import React, { useState, useEffect } from "react";
+import * as ort from "onnxruntime-web"; // Import ONNX Runtime Web
 import options from "../data/options_iteration_3.json";
 import PropertyCard from "./PropertyCard";
-import type { FeatureWeights, Property, PropertyMetadataMap, RxDbVectorDoc } from "../types"; // Assuming you define RxDbVectorDoc in types.ts
+import type { Property } from "../types";
 
 // --- Define paths to your models and data in the public directory ---
 const PREDICTION_MODEL_URL = "/prediction_pipeline_iteration_3.onnx";
-const RECOMMENDATION_PREPROCESSOR_URL =
-  "/recommendation_preprocessor.onnx"; // <-- Add path
-const VECTORS_URL = "/recommendations_property_vectors.json"; // <-- Add path
-const METADATA_URL = "/recommendations_property_metadata.json"; // <-- Add path
-const WEIGHTS_URL = "/recommendation_feature_weights.json"; // <-- Add path
+const REC_PREPROCESSOR_URL = "/recommendation_preprocessor.onnx"; // Path to preprocessor ONNX
+const REC_NN_MODEL_URL = "/nearest_neighbors_model.onnx"; // Path to NN ONNX
+const FEATURE_WEIGHTS_URL = "/recommendation_feature_weights.json"; // Path to weights JSON
+const PROPERTY_ID_MAP_URL = "/property_ids.json"; // Path to ID map JSON
+const PROPERTY_METADATA_URL = "/recommendations_property_metadata.json"; // Path to metadata JSON
+
+// Define expected structure for weights and metadata
+interface FeatureWeights {
+  [key: string]: number;
+}
+
+interface PropertyMetadata {
+  [key: string]: Property; // Assuming Property type matches metadata structure
+}
 
 const PredictionForm: React.FC = () => {
-  // --- Existing State ---
+  // State for each form field
   const [localityName, setLocality] = useState("");
   const [carpetArea, setCarpetArea] = useState(100);
   const [bedrooms, setBedrooms] = useState(1);
@@ -41,305 +36,275 @@ const PredictionForm: React.FC = () => {
     options.ageofcons[0]
   );
   const [furnished, setFurnished] = useState(options.furnished[0]);
-  
-  //
+
+  // --- UI Feedback States ---
   const [errorMsg, setErrorMsg] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [prediction, setPrediction] = useState<string | null>(null);
-  const [onnxSession, setOnnxSession] =
-    useState<ort.InferenceSession | null>(null);
-  const [sessionLoading, setSessionLoading] = useState(true);
-  const [sessionError, setSessionError] = useState<string | null>(null);
-  const [recommendations, setRecommendations] = useState<Property[]>([]);
-  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
-  const [recommendationsError, setRecommendationsError] = useState("");
+  const [loading, setLoading] = useState(false); // For prediction process
+  const [prediction, setPrediction] = useState<string | null>(null); // Use null initially
 
-  // --- NEW State Variables ---
+  // --- Existing Prediction ONNX Session State ---
+  const [predictionSession, setPredictionSession] =
+  useState<ort.InferenceSession | null>(null);
 
-  // Recommendation Preprocessor ONNX Session
-  const [recoOnnxSession, setRecoOnnxSession] =
-    useState<ort.InferenceSession | null>(null);
-  const [recoSessionLoading, setRecoSessionLoading] = useState(true);
-  const [recoSessionError, setRecoSessionError] = useState<string | null>(
-    null
+  // --- NEW: Recommendation Assets State ---
+  const [recPreprocessorSession, setRecPreprocessorSession] =
+  useState<ort.InferenceSession | null>(null);
+  const [recNnSession, setRecNnSession] =
+  useState<ort.InferenceSession | null>(null);
+  const [featureWeights, setFeatureWeights] =
+  useState<FeatureWeights | null>(null);
+  const [propertyIdMap, setPropertyIdMap] = useState<string[] | null>(
+  null
   );
-
-  // RxDB State
-  const [dbInstance, setDbInstance] = useState<RxDatabase | null>(null);
-  const [vectorCollection, setVectorCollection] =
-    useState<RxCollection<RxDbVectorDoc> | null>(null);
-  const [dbLoading, setDbLoading] = useState(true);
-  const [dbError, setDbError] = useState<string | null>(null);
-
-  // Metadata State
   const [propertyMetadata, setPropertyMetadata] =
-    useState<PropertyMetadataMap>(new Map());
-  const [metadataLoading, setMetadataLoading] = useState(true);
-  const [metadataError, setMetadataError] = useState<string | null>(null);
+  useState<PropertyMetadata | null>(null);
 
-  // Weights State
-  const [featureWeights, setFeatureWeights] = useState<FeatureWeights | null>(
-    null
-  );
-  const [weightsLoading, setWeightsLoading] = useState(true);
-  const [weightsError, setWeightsError] = useState<string | null>(null);
+  // --- Combined Loading/Error State for All Assets ---
+  const [assetsLoading, setAssetsLoading] = useState(true);
+  const [assetsError, setAssetsError] = useState<string | null>(null);
 
-  // Combined loading state for all initial setup
-  const [isInitializing, setIsInitializing] = useState(true);
+  // --- Existing Recommendations State ---
+  const [recommendations, setRecommendations] = useState<Property[]>([]);
 
-  // --- Add RxDB Plugin ---
-  // Needs to be done only once, outside component or in a top-level setup
-  // If called multiple times, it might log warnings but should be okay.
-  // Consider moving this to your main app entry point if possible.
-  // try {
-  //   addRxPlugin(RxDBVectorStorePlugin);
-  // } catch (err) {
-  //   console.warn("RxDBVectorStorePlugin might already be added.", err);
-  // }
+  // --- Constants for Recommendation Model ---
+  // IMPORTANT: Ensure these match your NN model export
+  const REC_NUM_FEATURES = 5; // Number of features AFTER preprocessing for NN model
+  const REC_NUM_NEIGHBORS = 10; // K value used in NN model
 
-  // --- Effect to Load Models, Init DB, and Load Data ---
+  // --- Effect to Load ONNX Model ---
   useEffect(() => {
-    const initializeApp = async () => {
-      setIsInitializing(true);
-      console.log("Starting application initialization...");
-
+    const loadAssets = async () => {
       try {
-        // --- 1. Load ONNX Models Concurrently ---
-        setSessionLoading(true);
-        setRecoSessionLoading(true);
-        const [predSession, recoSession] = await Promise.all([
-          ort.InferenceSession.create(PREDICTION_MODEL_URL, {
-            executionProviders: ["wasm"],
-          }).catch((e) => {
-            console.error("Error loading Prediction ONNX session:", e);
-            setSessionError(
-              `Failed to load prediction model: ${
-                e instanceof Error ? e.message : String(e)
-              }`
-            );
-            return null; // Allow other initializations to proceed
-          }),
-          ort.InferenceSession.create(RECOMMENDATION_PREPROCESSOR_URL, {
-            executionProviders: ["wasm"],
-          }).catch((e) => {
-            console.error("Error loading Recommendation ONNX session:", e);
-            setRecoSessionError(
-              `Failed to load recommendation preprocessor: ${
-                e instanceof Error ? e.message : String(e)
-              }`
-            );
-            return null;
-          }),
+        setAssetsLoading(true);
+        setAssetsError(null);
+        console.log("Attempting to load all assets...");
+
+        // Define fetch options if needed (e.g., caching)
+        const fetchOptions = { cache: "no-cache" } as RequestInit; // Example: disable cache
+
+        // Define ONNX session options
+        const sessionOptions: ort.InferenceSession.options = {
+          executionProviders: ["wasm", "webgl"], // Try WASM first, fallback WebGL
+          // graphOptimizationLevel: 'all', // Optional optimization
+        };
+
+        // Load all assets concurrently
+        const [
+          predSess,
+          recPreSess,
+          recNnSess,
+          weightsRes,
+          idMapRes,
+          metadataRes,
+        ] = await Promise.all([
+          ort.InferenceSession.create(PREDICTION_MODEL_URL, sessionOptions),
+          ort.InferenceSession.create(REC_PREPROCESSOR_URL, sessionOptions),
+          ort.InferenceSession.create(REC_NN_MODEL_URL, sessionOptions),
+          fetch(FEATURE_WEIGHTS_URL, fetchOptions),
+          fetch(PROPERTY_ID_MAP_URL, fetchOptions),
+          fetch(PROPERTY_METADATA_URL, fetchOptions),
         ]);
 
-        if (predSession) {
-          setOnnxSession(predSession);
-          console.log("Prediction ONNX Session created.");
-          setSessionError(null); // Clear previous error on success
-        }
-        setSessionLoading(false);
-
-        if (recoSession) {
-          setRecoOnnxSession(recoSession);
-          console.log("Recommendation Preprocessor ONNX Session created.");
-          setRecoSessionError(null); // Clear previous error on success
-        }
-        setRecoSessionLoading(false);
-
-        // --- 2. Initialize RxDB ---
-        setDbLoading(true);
-        let db: RxDatabase | null = null;
-        let vectorsCol: RxCollection<RxDbVectorDoc> | null = null;
-        try {
-          console.log("Initializing RxDB database...");
-          db = await createRxDatabase({
-            name: "recommendationdb_memory", // Unique name
-            storage: getRxStorageMemory(),
-            // ignoreDuplicate: true, // Prevent error if DB exists
-          });
-          setDbInstance(db);
-          console.log("RxDB database initialized.");
-
-          console.log("Defining vector schema...");
-          const vectorSchema = {
-            version: 0,
-            primaryKey: "id",
-            type: "object",
-            properties: {
-              id: { type: "string", maxLength: 100 },
-              embedding: { type: "array", items: { type: "number" } },
-            },
-            required: ["id", "embedding"],
-          };
-
-          console.log("Adding 'vectors' collection...");
-          // Use a temporary object for collections definition
-          const collections = {
-            vectors: { schema: vectorSchema },
-          };
-          await db.addCollections(collections);
-          vectorsCol = db.vectors; // Access the collection
-          setVectorCollection(vectorsCol);
-          console.log("'vectors' collection added successfully.");
-          setDbError(null);
-        } catch (e) {
-          console.error("Error initializing RxDB:", e);
-          setDbError(
-            `Failed to initialize database: ${
-              e instanceof Error ? e.message : String(e)
-            }`
+        // Check fetch responses
+        if (!weightsRes.ok)
+          throw new Error(
+            `Failed to fetch weights: ${weightsRes.statusText}`
           );
-        } finally {
-          setDbLoading(false);
-        }
+        if (!idMapRes.ok)
+          throw new Error(
+            `Failed to fetch ID map: ${idMapRes.statusText}`
+          );
+        if (!metadataRes.ok)
+          throw new Error(
+            `Failed to fetch metadata: ${metadataRes.statusText}`
+          );
 
-        // --- 3. Load Static Data (Weights, Metadata) Concurrently ---
-        setWeightsLoading(true);
-        setMetadataLoading(true);
-        const [weightsData, metadataData] = await Promise.all([
-          fetch(WEIGHTS_URL)
-            .then((res) => (res.ok ? res.json() : Promise.reject(res)))
-            .catch((e) => {
-              console.error("Error fetching weights:", e);
-              setWeightsError("Failed to load feature weights.");
-              return null;
-            }),
-          fetch(METADATA_URL)
-            .then((res) => (res.ok ? res.json() : Promise.reject(res)))
-            .catch((e) => {
-              console.error("Error fetching metadata:", e);
-              setMetadataError("Failed to load property metadata.");
-              return null;
-            }),
-        ]);
+        // Parse JSON data
+        const weightsJson = await weightsRes.json();
+        const idMapJson = await idMapRes.json();
+        const metadataJson = await metadataRes.json();
 
-        if (weightsData) {
-          setFeatureWeights(weightsData);
-          console.log("Feature weights loaded.");
-          setWeightsError(null);
-        }
-        setWeightsLoading(false);
+        // Set state
+        setPredictionSession(predSess);
+        setRecPreprocessorSession(recPreSess);
+        setRecNnSession(recNnSess);
+        setFeatureWeights(weightsJson);
+        setPropertyIdMap(idMapJson);
+        setPropertyMetadata(metadataJson);
 
-        if (metadataData) {
-          setPropertyMetadata(new Map(Object.entries(metadataData)));
-          console.log("Property metadata loaded into memory map.");
-          setMetadataError(null);
-        }
-        setMetadataLoading(false);
+        console.log("All assets loaded successfully:");
+        console.log("Prediction Session:", predSess);
+        console.log("Rec Preprocessor Session:", recPreSess);
+        console.log("Rec NN Session:", recNnSess);
+        console.log("Feature Weights:", weightsJson);
 
-        // --- 4. Load Vectors into RxDB (only if DB and collection are ready) ---
-        if (vectorsCol) {
-          console.log("Checking vector data in RxDB...");
-          try {
-            const response = await fetch(VECTORS_URL);
-            if (!response.ok) throw new Error("Failed to fetch vectors.json");
-            const vectorJsonData: RxDbVectorDoc[] = await response.json();
-            const expectedCount = vectorJsonData.length;
-            const currentCount = await vectorsCol.count().exec();
-
-            if (currentCount !== expectedCount) {
-              console.log(
-                `Vector count mismatch (${currentCount}/${expectedCount}). Upserting...`
-              );
-              // Consider performance for large upserts on first load
-              await vectorsCol.bulkUpsert(vectorJsonData);
-              console.log(
-                `Upserted ${vectorJsonData.length} vectors into RxDB.`
-              );
-            } else {
-              console.log("Vector data already loaded in RxDB.");
-            }
-          } catch (e) {
-            console.error("Error loading vectors into RxDB:", e);
-            // Optionally set a specific error state for vector loading
-            setDbError(
-              (dbError ? dbError + "; " : "") +
-                `Failed to load vectors: ${
-                  e instanceof Error ? e.message : String(e)
-                }`
-            );
-          }
-        } else {
-          console.warn("Skipping vector load because DB/collection failed.");
-        }
-
-        console.log("Application initialization complete.");
-      } catch (error) {
-        // Catch any unexpected errors during the overall process
-        console.error("Critical error during app initialization:", error);
-        // Set a general initialization error state if needed
-      } finally {
-        setIsInitializing(false); // Mark initialization as finished
-      }
-    };
-
-    initializeApp();
-
-    // Cleanup function for RxDB on component unmount
-    return () => {
-      console.log("Cleaning up RxDB instance...");
-      dbInstance?.destroy(); // Properly close the database connection
-    };
-  }, []); // Empty dependency array: Run only once on mount
-
-  // --- Nearest Neighbor Search Function (Full Scan) ---
-  const findNearestNeighborsFullScan = useCallback(
-    async (
-      queryVector: number[],
-      collection: RxCollection<RxDbVectorDoc>, // Pass collection as arg
-      topN: number = 10 // Number of recommendations to return
-    ): Promise<Array<{ doc: RxDbVectorDoc; distance: number }>> => {
-      if (!collection) {
-        console.error("Vector collection is not available for search.");
-        return [];
-      }
-
-      console.log("Starting full scan nearest neighbor search...");
-      console.time("FullScanSearch"); // Start timing
-
-      try {
-        // 1. Fetch all documents from the collection (reads from LocalStorage)
-        const allDocs = await collection.find().exec();
-        console.log(`Retrieved ${allDocs.length} documents for comparison.`);
-
-        if (allDocs.length === 0) return [];
-
-        // 2. Calculate distance for each document
-        const docsWithDistance = allDocs.map((doc) => {
-          // Ensure embedding exists and is an array
-          const embedding = doc.embedding;
-          if (!Array.isArray(embedding)) {
-            console.warn(`Document ${doc.id} has invalid embedding.`);
-            return { doc: doc.toJSON(), distance: Infinity }; // Handle invalid data
-          }
-          return {
-            doc: doc.toJSON(), // Use plain JS object
-            distance: cosineSimilarity(queryVector, embedding),
-          };
-        });
-
-        // 3. Sort by distance (ascending)
-        const sorted = docsWithDistance.sort(
-          sortByObjectNumberProperty("distance")
-        );
-
-        console.timeEnd("FullScanSearch"); // End timing
-        console.log(
-          `Search complete. Top result distance: ${
-            sorted.length > 0 ? sorted[0].distance : "N/A"
+      } catch (e) {
+        console.error("Error loading assets:", e);
+        setAssetsError(
+          `Failed to load necessary assets. Please refresh. ${
+            e instanceof Error ? e.message : String(e)
           }`
         );
-
-        // 4. Return top N results
-        return sorted.slice(0, topN);
-      } catch (error) {
-        console.error("Error during full scan search:", error);
-        console.timeEnd("FullScanSearch"); // Ensure timer ends on error
-        return []; // Return empty on error
+        // Clear potentially partially loaded state
+        setPredictionSession(null);
+        setRecPreprocessorSession(null);
+        setRecNnSession(null);
+        setFeatureWeights(null);
+        setPropertyIdMap(null);
+        setPropertyMetadata(null);
+      } finally {
+        setAssetsLoading(false);
       }
-    },
-    []
-  ); // No dependencies needed if it only uses args
+    };
+    loadAssets();
+  }, []); // Empty dependency array ensures this runs only once on mount
+
+    // --- NEW: Function to run client-side recommendations ---
+    const runClientSideRecommendations = async (
+      // Pass only the features needed by the recommendation preprocessor
+      recInputData: {
+        carpetArea: number;
+        bedrooms: number;
+        bathrooms: number;
+        floorNumber: number;
+        totalFloorNumber: number;
+      }
+    ): Promise<Property[]> => {
+      // Check if all required assets are loaded
+      if (
+        !recPreprocessorSession ||
+        !recNnSession ||
+        !featureWeights ||
+        !propertyIdMap ||
+        !propertyMetadata
+      ) {
+        throw new Error(
+          "Recommendation assets not loaded. Cannot proceed."
+        );
+      }
+  
+      console.log("Starting client-side recommendations...");
+  
+      // --- Step 1: Run Preprocessor ONNX ---
+      // Input names MUST match the 'initial_types' used for preprocessor ONNX conversion
+      const preprocessorInput = {
+        // Assuming these are the names and they expect Int64
+        carpetArea: new ort.Tensor(
+          "int64",
+          [BigInt(recInputData.carpetArea)],
+          [1, 1]
+        ),
+        bedrooms: new ort.Tensor(
+          "int64",
+          [BigInt(recInputData.bedrooms)],
+          [1, 1]
+        ),
+        bathrooms: new ort.Tensor(
+          "int64",
+          [BigInt(recInputData.bathrooms)],
+          [1, 1]
+        ),
+        floorNumber: new ort.Tensor(
+          "int64",
+          [BigInt(recInputData.floorNumber)],
+          [1, 1]
+        ),
+        totalFloorNumber: new ort.Tensor(
+          "int64",
+          [BigInt(recInputData.totalFloorNumber)],
+          [1, 1]
+        ),
+      };
+      console.log("Rec Preprocessor Input:", preprocessorInput);
+  
+      const preprocessorResults = await recPreprocessorSession.run(
+        preprocessorInput
+      );
+      const preprocessorOutputName = recPreprocessorSession.outputNames[0];
+      const preprocessedTensor = preprocessorResults[preprocessorOutputName];
+  
+      if (!preprocessedTensor || !(preprocessedTensor.data instanceof Float32Array)) {
+          throw new Error("Preprocessor did not return a valid Float32Array tensor.");
+      }
+      const preprocessedData = Array.from(preprocessedTensor.data as Float32Array); // Convert Float32Array to regular array
+      console.log("Preprocessed Data:", preprocessedData);
+  
+      if (preprocessedData.length !== REC_NUM_FEATURES) {
+          throw new Error(`Preprocessor output length (${preprocessedData.length}) does not match expected features (${REC_NUM_FEATURES})`);
+      }
+  
+  
+      // --- Step 2: Apply Feature Weights ---
+      // The order of weights in the JSON must match the output order of the preprocessor
+      const weightedData = preprocessedData.map((value, index) => {
+        // Assuming featureWeights keys match the order implicitly or explicitly
+        // A safer approach might be to get output names from preprocessor if available
+        // For now, assume order matches: carpetArea, bedrooms, bathrooms, floorNumber, totalFloorNumber
+        const featureName = Object.keys(featureWeights)[index]; // Less robust way
+        // TODO: A more robust way is needed if preprocessor output order isn't guaranteed
+        // or if featureWeights keys don't align perfectly.
+        // For now, we rely on the order being correct as per your setup.
+        if (!featureName || featureWeights[featureName] === undefined) {
+            console.warn(`Weight not found for feature at index ${index}. Using weight 1.0`);
+            return value; // Apply weight 1 if not found (or handle error)
+        }
+        return value * featureWeights[featureName];
+      });
+      console.log("Weighted Data:", weightedData);
+  
+      // --- Step 3: Run Nearest Neighbors ONNX ---
+      const nnInputTensor = new ort.Tensor(
+        "float32",
+        new Float32Array(weightedData), // NN model expects Float32
+        [1, REC_NUM_FEATURES] // Shape [batch_size, num_features]
+      );
+      const nnInputName = recNnSession.inputNames[0]; // Get the actual input name
+      const nnFeeds = { [nnInputName]: nnInputTensor };
+  
+      console.log("Rec NN Input:", nnFeeds);
+      const nnResults = await recNnSession.run(nnFeeds);
+      console.log("Rec NN Results:", nnResults);
+  
+      // --- Step 4: Get Indices ---
+      // Output names depend on skl2onnx version and model type.
+      // Usually 'output_label' or 'indices' for indices, 'output_probability' or 'distances' for distances.
+      // Check recNnSession.outputNames if unsure. Let's assume standard order [indices, distances]
+      const indicesOutputName = recNnSession.outputNames[0];
+      const distancesOutputName = recNnSession.outputNames[1]; // We don't use distances here, but good to know
+  
+      const indicesTensor = nnResults[indicesOutputName];
+      // Indices might be Int64, represented as BigInt64Array in JS
+      const neighborIndices = Array.from(indicesTensor.data as BigInt64Array | Int32Array).map(Number); // Convert BigInt/Int32 to number
+      console.log("Neighbor Indices:", neighborIndices);
+  
+      // --- Step 5: Map Indices to Property IDs ---
+      const recommendedPropertyIds = neighborIndices.map((index) => {
+        if (index < 0 || index >= propertyIdMap.length) {
+          console.error(`Invalid index ${index} from NN model.`);
+          return null; // Handle invalid index
+        }
+        return propertyIdMap[index];
+      }).filter(id => id !== null) as string[]; // Filter out any nulls
+      console.log("Recommended Property IDs:", recommendedPropertyIds);
+  
+  
+      // --- Step 6: Fetch Metadata ---
+      const finalRecommendations: Property[] = recommendedPropertyIds
+        .map((id) => {
+          const meta = propertyMetadata[id];
+          if (!meta) {
+            console.warn(`Metadata not found for property ID: ${id}`);
+            return null;
+          }
+          // Optionally add the original ID to the property object if not already present
+          return { ...meta, id: id };
+        })
+        .filter((p): p is Property => p !== null); // Type guard to filter nulls
+  
+      console.log("Final Recommendations:", finalRecommendations);
+      return finalRecommendations;
+    };
+  
 
   // --- Handle Form Submission ---
   const handleSubmit = async (e: React.FormEvent) => {
@@ -347,7 +312,6 @@ const PredictionForm: React.FC = () => {
     setErrorMsg("");
     setPrediction(null);
     setRecommendations([]); // Clear previous recommendations
-    setRecommendationsError("");
 
     // --- Input/form validation ---
     if (floorNumber > totalFloorNumber) {
@@ -375,178 +339,78 @@ const PredictionForm: React.FC = () => {
       return;
     }
 
-    // --- Check if Prediction Model is Ready ---
-    if (!onnxSession) {
-      setErrorMsg(
-        sessionError || "Prediction model not loaded. Please wait or refresh."
-      );
+    // --- Check if ALL Assets are Ready ---
+    if (assetsLoading) {
+      setErrorMsg("Assets are still loading. Please wait.");
+      return;
+    }
+    if (assetsError || !predictionSession || !recPreprocessorSession || !recNnSession || !featureWeights || !propertyIdMap || !propertyMetadata) {
+      setErrorMsg(assetsError || "One or more required assets failed to load. Please refresh.");
       return;
     }
 
-    setLoading(true); // Indicate general loading (prediction + potential reco)
+    // --- Start Loading State ---
+    setLoading(true); // Use combined loading state
 
-    // --- Prediction Logic (Keep Existing) ---
-    let predictedPriceFormatted: string | null = null;
     try {
-      // Build input tensor for prediction model
-      const inputTensor = {
+      // --- Run Prediction (Keep this part as is) ---
+      const predictionInputTensor = {
         localityName: new ort.Tensor("string", [localityName], [1, 1]),
         carpetArea: new ort.Tensor("int64", [BigInt(carpetArea)], [1, 1]),
         floorNumber: new ort.Tensor("int64", [BigInt(floorNumber)], [1, 1]),
-        totalFloorNumber: new ort.Tensor(
-          "int64",
-          [BigInt(totalFloorNumber)],
-          [1, 1]
-        ),
+        totalFloorNumber: new ort.Tensor("int64", [BigInt(totalFloorNumber)], [1, 1]),
         transactionType: new ort.Tensor("string", [transactionType], [1, 1]),
         furnished: new ort.Tensor("string", [furnished], [1, 1]),
         bedrooms: new ort.Tensor("int64", [BigInt(bedrooms)], [1, 1]),
         bathrooms: new ort.Tensor("int64", [BigInt(bathrooms)], [1, 1]),
         ageofcons: new ort.Tensor("string", [ageofcons], [1, 1]),
       };
-      console.log("Running prediction inference...");
+      console.log("Running prediction inference with input:", predictionInputTensor);
+      const predictionResults = await predictionSession.run(predictionInputTensor);
+      const predictionOutputName = predictionSession.outputNames[0];
+      const predictionOutputTensor = predictionResults[predictionOutputName];
+      if (!predictionOutputTensor) throw new Error("Prediction output tensor not found.");
+      const predictedPrice = (predictionOutputTensor.data as Float32Array)[0];
+      const formattedPrice = Math.round(predictedPrice).toLocaleString("en-IN");
+      setPrediction(`Estimated Price: ₹ ${formattedPrice}`);
+      console.log("Prediction successful:", formattedPrice);
 
-      const results = await onnxSession.run(inputTensor);
-      const outputName = onnxSession.outputNames[0];
-      const outputTensor = results[outputName];
-      if (!outputTensor) throw new Error("Prediction output tensor not found.");
-      const predictedPrice = (outputTensor.data as Float32Array)[0];
-      predictedPriceFormatted = `Estimated Price: ₹ ${Math.round(
-        predictedPrice
-      ).toLocaleString("en-IN")}`;
-      setPrediction(predictedPriceFormatted);
-      console.log("Prediction successful:", predictedPriceFormatted);
-    } catch (error) {
-      console.error("Error during prediction:", error);
-      setErrorMsg(
-        `Prediction failed. ${error instanceof Error ? error.message : String(error)}`
-      );
-      setLoading(false); // Stop loading if prediction fails
-      return; // Stop if prediction fails
-    }
 
-    // --- Client-Side Recommendation Logic ---
-    setLoadingRecommendations(true); // Specific loading for recommendations
-    try {
-      // Check if all necessary components for recommendations are ready
-      if (isInitializing) {
-        throw new Error("App is still initializing. Please wait.");
-      }
-      if (!recoOnnxSession) {
-        throw new Error(
-          recoSessionError || "Recommendation preprocessor not loaded."
-        );
-      }
-      if (!vectorCollection) {
-        throw new Error(dbError || "Vector database not ready.");
-      }
-      if (!featureWeights) {
-        throw new Error(weightsError || "Feature weights not loaded.");
-      }
-      if (propertyMetadata.size === 0) {
-        throw new Error(metadataError || "Property metadata not loaded.");
-      }
-
-      console.log("Starting client-side recommendation process...");
-
-      // 1. Prepare input for Recommendation Preprocessor ONNX
-      // IMPORTANT: Use ONLY the features expected by recommendation_preprocessor.onnx
-      //            and ensure the names match its 'initial_types'
-      const recoInputTensor = {
-        // Adjust names and types based on your reco_preprocessor.onnx definition
-        carpetArea: new ort.Tensor("int64", [BigInt(carpetArea)], [1, 1]),
-        bedrooms: new ort.Tensor("int64", [BigInt(bedrooms)], [1, 1]),
-        bathrooms: new ort.Tensor("int64", [BigInt(bathrooms)], [1, 1]),
-        floorNumber: new ort.Tensor("int64", [BigInt(floorNumber)], [1, 1]),
-        totalFloorNumber: new ort.Tensor(
-          "int64",
-          [BigInt(totalFloorNumber)],
-          [1, 1]
-        ),
-        // Add other features if your preprocessor expects them (locality, etc.)
-        // localityName: new ort.Tensor("string", [localityName], [1, 1]),
-        // transactionType: new ort.Tensor("string", [transactionType], [1, 1]),
-        // furnished: new ort.Tensor("string", [furnished], [1, 1]),
-        // ageofcons: new ort.Tensor("string", [ageofcons], [1, 1]),
+      // --- Run Client-Side Recommendations ---
+      // Prepare input data specifically for the recommendation preprocessor
+      const recommendationInputData = {
+        carpetArea,
+        bedrooms,
+        bathrooms,
+        floorNumber,
+        totalFloorNumber,
+        // Add other features IF your recommendation preprocessor expects them
       };
-      console.log("Running recommendation preprocessor inference...");
-      const recoResults = await recoOnnxSession.run(recoInputTensor);
-      const recoOutputName = recoOnnxSession.outputNames[0]; // Assuming one output
-      const recoOutputTensor = recoResults[recoOutputName];
-      if (!recoOutputTensor)
-        throw new Error("Recommendation preprocessor output not found.");
 
-      // Output is likely Float32Array or similar
-      const preprocessedVector = Array.from(
-        recoOutputTensor.data as Float32Array | Int32Array | BigInt64Array // Adjust type based on actual output
-      );
-      console.log("Preprocessed vector:", preprocessedVector);
-
-      // 2. Apply Weights to create Query Vector
-      // IMPORTANT: Ensure this order matches the output order of reco_preprocessor.onnx
-      const featureOrderForWeights = [
-        "carpetArea",
-        "bedrooms",
-        "bathrooms",
-        "floorNumber",
-        "totalFloorNumber",
-        // Add other feature names in the correct order if they are in the output
-      ];
-      if (preprocessedVector.length !== featureOrderForWeights.length) {
-          console.error("Mismatch between preprocessed vector length and expected feature order for weights!");
-          // Handle this error appropriately - maybe skip weighting or throw
-          throw new Error("Preprocessor output length mismatch for weighting.");
-      }
-      const queryVector = preprocessedVector.map((value, index) => {
-        const featureName = featureOrderForWeights[index];
-        const weight = featureWeights[featureName] || 1.0; // Default to 1 if weight missing
-        return value * weight;
-      });
-      console.log("Weighted query vector:", queryVector);
-
-      // 3. Perform Nearest Neighbor Search
-      const searchResults = await findNearestNeighborsFullScan(
-        queryVector,
-        vectorCollection,
-        10 // Get top 10 recommendations
-      );
-      console.log("Search results:", searchResults);
-
-      // 4. Retrieve Metadata and Format Results
-      const finalRecommendations: Property[] = searchResults
-        .map((result) => {
-          const metadata = propertyMetadata.get(result.doc.id);
-          if (metadata) {
-            return {
-              ...metadata, // Spread the metadata fields
-              id: result.doc.id, // Ensure ID is present
-              distance: result.distance, // Add distance for potential display/sorting
-            };
-          }
-          console.warn(`Metadata not found for recommended ID: ${result.doc.id}`);
-          return null; // Filter out items with missing metadata
-        })
-        .filter((item): item is Property => item !== null); // Type guard to remove nulls
-
-      setRecommendations(finalRecommendations);
-      console.log("Recommendations generated:", finalRecommendations);
-      if (finalRecommendations.length === 0 && searchResults.length > 0) {
-          setRecommendationsError("Found similar items, but couldn't load their details.");
-      }
+      const recs = await runClientSideRecommendations(recommendationInputData);
+      setRecommendations(recs);
 
     } catch (error) {
-      console.error("Error during recommendation generation:", error);
-      setRecommendationsError(
-        `Failed to get recommendations. ${
-          error instanceof Error ? error.message : String(error)
-        }`
+      console.error("Error during prediction or recommendation:", error);
+      setErrorMsg(
+        `Processing failed. ${error instanceof Error ? error.message : String(error)}`
       );
+      setPrediction(null); // Clear prediction on error
       setRecommendations([]); // Clear recommendations on error
     } finally {
-      setLoadingRecommendations(false);
-      setLoading(false); // Ensure overall loading stops
+      setLoading(false); // Stop loading indicator
     }
   };
+
+  // --- JSX Rendering (Mostly unchanged) ---
+  // Add checks for assetsLoading and assetsError at the top level if desired
+  if (assetsLoading) {
+    return <div>Loading models and data...</div>;
+  }
+
+  if (assetsError) {
+    return <div>Error loading assets: {assetsError}</div>;
+  }
 
   return (
     <>
@@ -780,11 +644,11 @@ const PredictionForm: React.FC = () => {
       </div>
 
       {/* Property Recommendations Section */}
-      {(recommendations.length > 0 || loadingRecommendations) && (
+      {(recommendations.length > 0 || loading) && (
         <div className="property-recommendations">
           <h3 className="section-title">Similar Properties You Might Like</h3>
           
-          {loadingRecommendations && (
+          {loading && (
             <div className="text-center my-5">
               <div className="spinner-border text-primary" role="status">
                 <span className="visually-hidden">Loading recommendations...</span>
@@ -793,9 +657,9 @@ const PredictionForm: React.FC = () => {
             </div>
           )}
           
-          {recommendationsError && (
+          {errorMsg && (
             <div className="alert alert-warning" role="alert">
-              {recommendationsError}
+              {errorMsg}
             </div>
           )}
           
