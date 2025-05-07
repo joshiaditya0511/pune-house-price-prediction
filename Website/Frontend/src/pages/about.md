@@ -1,9 +1,19 @@
+---
+layout: ../layouts/MarkdownPageLayout.astro
+title: About the Project
+# description: This article uses the new MarkdownPageLayout.
+# publishDate: 2025-05-07
+author: Aditya Joshi
+displayTitle: false # Uncomment this if your markdown starts with its own H1
+---
+
 # Pune House Price Predictor & Recommender
 
 [![Deployment](https://img.shields.io/badge/Live%20App-pune.adityajoshi.in-brightgreen)](https://pune.adityajoshi.in)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) <!-- Optional: Add a license badge if you have one -->
+[![GitHub Repo](https://img.shields.io/badge/GitHub-Repo-blue)](https://github.com/joshiaditya0511/pune-house-price-prediction)
 
-Welcome to the Pune House Price Predictor & Recommender project! This tool provides estimated prices for residential properties in Pune, India, and recommends similar properties based on user-defined features using machine learning. You can visit the live app at [pune.adityajoshi.in](https://pune.adityajoshi.in).
+Welcome to the Pune House Price Predictor & Recommender project! This tool provides estimated prices for residential properties in Pune, India, and recommends similar properties based on user-defined features using machine learning. You can check out the code at my github repo [here](https://github.com/joshiaditya0511/pune-house-price-prediction).
 
 ## Table of Contents
 
@@ -43,7 +53,13 @@ This section describes the technical process from user input to displaying resul
 
 With the latest architectural shift, all machine learning computations (prediction and recommendation) are performed directly in the user's web browser, leveraging ONNX models for efficient client-side inference.
 
-![Architecture Diagram](Stationary/PHPPcurrent.svg)
+<img 
+  src="/PHPPcurrent.svg" 
+  alt="Current Architecture Diagram" 
+  width="800" 
+  height="600" 
+  style="max-width: 100%; height: auto;" 
+/>
 
 1.  **Initial Asset Loading:** When the user first visits the site ([pune.adityajoshi.in](https://pune.adityajoshi.in)), the frontend application (Astro.js and React) loads:
     *   The ONNX model for price prediction (which includes the preprocessing pipeline).
@@ -68,7 +84,13 @@ With the latest architectural shift, all machine learning computations (predicti
 
 When a user requests a prediction and recommendations via the web interface:
 
-![Architecture Diagram](Stationary/PHPPold.svg)
+<img 
+  src="/PHPPold.svg" 
+  alt="Previous Architecture Diagram"
+  width="900" 
+  height="700" 
+  style="max-width: 100%; height: auto;" 
+/>
 
 1.  **Frontend Interaction:** The user inputs property features into the form on the static frontend application ([pune.adityajoshi.in](https://pune.adityajoshi.in)), built with Astro.js and React.
 2.  **Sequential API Requests:** Upon submission, the frontend makes **synchronous** POST requests to the backend API (`phpp-api.adityajoshi.in`), hosted on AWS EC2:
