@@ -9,6 +9,8 @@ import react from '@astrojs/react';
 import wasm from "vite-plugin-wasm";
 import topLevelAwait from "vite-plugin-top-level-await";
 
+import tailwindcss from "@tailwindcss/vite";
+
 // https://astro.build/config
 export default defineConfig({
   output: "static",
@@ -22,7 +24,7 @@ export default defineConfig({
   integrations: [react()],
   // site: "https://your-deployment-url.vercel.app", // Replace with your actual URL
   vite: {
-    plugins: [wasm(), topLevelAwait()],
+    plugins: [wasm(), topLevelAwait(), tailwindcss()],
     optimizeDeps: {
       exclude: ["voy-search"],
     }

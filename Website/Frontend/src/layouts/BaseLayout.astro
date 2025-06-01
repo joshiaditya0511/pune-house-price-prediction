@@ -2,7 +2,7 @@
 // src/layouts/BaseLayout.astro
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
-import "../styles/global.scss"; // Import your SCSS file
+import "../styles/global.css";
 
 interface Props {
   title: string;
@@ -40,14 +40,8 @@ const {
     <!-- Add padding-top to main content area to offset fixed navbar -->
     <main class="flex-shrink-0" style="padding-top: 70px;">
       <slot />
-       <!-- The content from your pages (e.g., index.astro) goes here -->
     </main>
     <Footer />
 
-    <!-- Bootstrap JS Bundle (includes Popper) - Required for dropdowns, offcanvas, etc. -->
-    <!-- Make sure Bootstrap is installed: npm install bootstrap -->
-    <script>
-      import "bootstrap/dist/js/bootstrap.bundle.min.js";
-    </script>
   </body>
 </html>

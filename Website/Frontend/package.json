@@ -11,20 +11,30 @@
   "dependencies": {
     "@astrojs/react": "^4.2.3",
     "@astrojs/vercel": "^8.1.3",
+    "@radix-ui/react-label": "^2.1.7",
+    "@radix-ui/react-select": "^2.2.5",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@tailwindcss/vite": "^4.1.8",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
     "astro": "^5.5.5",
     "bootstrap": "^5.3.3",
     "bootstrap-icons": "^1.11.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.511.0",
     "onnxruntime-web": "^1.21.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "rxdb": "^16.11.0",
     "rxjs": "^7.8.2",
     "sass": "^1.86.0",
+    "tailwind-merge": "^3.3.0",
+    "tailwindcss": "^4.1.8",
     "voy-search": "^0.6.3"
   },
   "devDependencies": {
+    "tw-animate-css": "^1.3.2",
     "vite-plugin-top-level-await": "^1.5.0",
     "vite-plugin-wasm": "^3.4.1"
   }
