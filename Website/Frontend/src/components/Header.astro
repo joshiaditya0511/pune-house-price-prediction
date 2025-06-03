@@ -2,83 +2,87 @@
 // src/components/Header.astro
 const currentPath = Astro.url.pathname;
 
-// Updated navLinks array to include the single About page
 const navLinks = [
   { href: "/predict", text: "Predictor" },
   { href: "/insights", text: "Insights" },
-  { href: "/about", text: "About" }, // Added the single About link here
+  { href: "/about", text: "About" },
 ];
-
-// Removed the aboutLinks array as it's no longer needed for a dropdown
-// const aboutLinks = [
-//   { href: "/about/project", text: "About the Project" },
-//   { href: "/about/model", text: "Model Training" },
-//   { href: "/about/deployment", text: "Deployment" },
-// ];
 ---
 
-<nav class="navbar navbar-expand-lg fixed-top bg-body-tertiary shadow-sm">
-  <div class="container-fluid">
-    <a class="navbar-brand fw-bold" href="/">PuneProp Predict</a>
-    <button
-      class="navbar-toggler"
-      type="button"
-      data-bs-toggle="offcanvas"
-      data-bs-target="#offcanvasNavbar"
-      aria-controls="offcanvasNavbar"
-      aria-label="Toggle navigation"
-    >
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div
-      class="offcanvas offcanvas-end"
-      tabindex="-1"
-      id="offcanvasNavbar"
-      aria-labelledby="offcanvasNavbarLabel"
-    >
-      <div class="offcanvas-header">
-        <h5 class="offcanvas-title" id="offcanvasNavbarLabel">Menu</h5>
+<header class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+  <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between items-center h-16">
+      <!-- Logo/Brand -->
+      <div class="flex items-center">
+        <a href="/" class="flex items-center space-x-2 text-xl font-bold text-blue-800 hover:text-blue-900 transition-colors">
+          <svg class="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+          </svg>
+          <span>PuneProp Predict</span>
+        </a>
+      </div>
+
+      <!-- Desktop Navigation -->
+      <div class="hidden md:flex items-center space-x-8">
+        {navLinks.map((link) => (
+          <a
+            href={link.href}
+            class={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              currentPath === link.href
+                ? 'text-blue-700 bg-blue-50'
+                : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50'
+            }`}
+          >
+            {link.text}
+          </a>
+        ))}
+      </div>
+
+      <!-- Mobile menu button -->
+      <div class="md:hidden">
         <button
           type="button"
-          class="btn-close"
-          data-bs-dismiss="offcanvas"
-          aria-label="Close"></button>
-      </div>
-      <div class="offcanvas-body">
-        <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-          {
-            /* This map now includes the "About" link automatically */
-            navLinks.map((link) => (
-              <li class="nav-item">
-                <a
-                  class:list={[
-                    "nav-link",
-                    { active: currentPath === link.href },
-                  ]}
-                  aria-current={currentPath === link.href ? "page" : false}
-                  href={link.href}
-                >
-                  {link.text}
-                </a>
-              </li>
-            ))
-          }
-          {/* Removed the entire dropdown li element for About */}
-        </ul>
+          class="mobile-menu-button inline-flex items-center justify-center p-2 rounded-md text-slate-600 hover:text-blue-700 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+          aria-controls="mobile-menu"
+          aria-expanded="false"
+        >
+          <span class="sr-only">Open main menu</span>
+          <!-- Hamburger icon -->
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
       </div>
     </div>
-  </div>
-</nav>
 
-<style lang="scss">
-  // Add specific navbar overrides here if needed
-  // Example: Customize dropdown menu background
-  // .dropdown-menu {
-  //   background-color: #f0f0f0;
-  // }
+    <!-- Mobile Navigation Menu -->
+    <div class="md:hidden mobile-menu hidden">
+      <div class="px-2 pt-2 pb-3 space-y-1 bg-white border-t border-slate-200">
+        {navLinks.map((link) => (
+          <a
+            href={link.href}
+            class={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
+              currentPath === link.href
+                ? 'text-blue-700 bg-blue-50'
+                : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50'
+            }`}
+          >
+            {link.text}
+          </a>
+        ))}
+      </div>
+    </div>
+  </nav>
+</header>
 
-  // Ensure offcanvas background matches theme
-  .offcanvas {
-    background-color: var(--bs-body-bg);
-  }
-</style>
+<script>
+  // Mobile menu toggle
+  document.addEventListener('DOMContentLoaded', () => {
+    const button = document.querySelector('.mobile-menu-button');
+    const menu = document.querySelector('.mobile-menu');
+    
+    button?.addEventListener('click', () => {
+      menu?.classList.toggle('hidden');
+    });
+  });
+</script>

@@ -1,674 +1,425 @@
-import React, { useState, useEffect } from "react";
-import * as ort from "onnxruntime-web"; // Import ONNX Runtime Web
+import React, { useState } from "react";
+import { useAssets } from "../hooks/useAssets";
+import { AssetLoadingIndicator } from "./AssetLoadingIndicator";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Home, MapPin, Bed, Bath, Building, Calendar, Palette, TrendingUp, Loader2, Sparkles } from "lucide-react";
+import * as ort from "onnxruntime-web";
 import options from "../data/options_iteration_3.json";
 import PropertyCard from "./PropertyCard";
 import type { Property } from "../types";
 
-// --- Define paths to your models and data in the public directory ---
-const PREDICTION_MODEL_URL = "/prediction_pipeline_iteration_3.onnx";
-const REC_PREPROCESSOR_URL = "/recommendation_preprocessor.onnx"; // Path to preprocessor ONNX
-const REC_NN_MODEL_URL = "/nearest_neighbors_model.onnx"; // Path to NN ONNX
-const FEATURE_WEIGHTS_URL = "/recommendation_feature_weights.json"; // Path to weights JSON
-const PROPERTY_ID_MAP_URL = "/property_ids.json"; // Path to ID map JSON
-const PROPERTY_METADATA_URL = "/recommendations_property_metadata.json"; // Path to metadata JSON
-
-// Define expected structure for weights and metadata
-interface FeatureWeights {
-  [key: string]: number;
-}
-
-interface PropertyMetadata {
-  [key: string]: Property; // Assuming Property type matches metadata structure
-}
-
 const PredictionForm: React.FC = () => {
-  // State for each form field
-  const [localityName, setLocality] = useState("");
-  const [carpetArea, setCarpetArea] = useState(100);
-  const [bedrooms, setBedrooms] = useState(1);
-  const [bathrooms, setBathrooms] = useState(1);
-  const [floorNumber, setFloorNumber] = useState(0);
-  const [totalFloorNumber, setTotalFloors] = useState(0);
-  const [transactionType, setTransactionType] = useState(
-    options.transactionType[0]
-  );
-  const [ageofcons, setAgeOfConstruction] = useState(
-    options.ageofcons[0]
-  );
-  const [furnished, setFurnished] = useState(options.furnished[0]);
+  // Asset management
+  const { assets, isLoading: assetsLoading, isReady, loadingState, error: assetsError, retryLoading, clearCache } = useAssets();
 
-  // --- UI Feedback States ---
-  const [errorMsg, setErrorMsg] = useState("");
-  const [loading, setLoading] = useState(false); // For prediction process
-  const [prediction, setPrediction] = useState<string | null>(null); // Use null initially
+  // Form state
+  const [formData, setFormData] = useState({
+    localityName: "",
+    carpetArea: 1000,
+    bedrooms: 2,
+    bathrooms: 2,
+    floorNumber: 1,
+    totalFloorNumber: 5,
+    transactionType: options.transactionType[0],
+    ageofcons: options.ageofcons[0],
+    furnished: options.furnished[0],
+  });
 
-  // --- Existing Prediction ONNX Session State ---
-  const [predictionSession, setPredictionSession] =
-  useState<ort.InferenceSession | null>(null);
-
-  // --- NEW: Recommendation Assets State ---
-  const [recPreprocessorSession, setRecPreprocessorSession] =
-  useState<ort.InferenceSession | null>(null);
-  const [recNnSession, setRecNnSession] =
-  useState<ort.InferenceSession | null>(null);
-  const [featureWeights, setFeatureWeights] =
-  useState<FeatureWeights | null>(null);
-  const [propertyIdMap, setPropertyIdMap] = useState<string[] | null>(
-  null
-  );
-  const [propertyMetadata, setPropertyMetadata] =
-  useState<PropertyMetadata | null>(null);
-
-  // --- Combined Loading/Error State for All Assets ---
-  const [assetsLoading, setAssetsLoading] = useState(true);
-  const [assetsError, setAssetsError] = useState<string | null>(null);
-
-  // --- Existing Recommendations State ---
+  // UI state
+  const [prediction, setPrediction] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<Property[]>([]);
+  const [processing, setProcessing] = useState(false);
+  const [formError, setFormError] = useState("");
 
-  // --- Constants for Recommendation Model ---
-  // IMPORTANT: Ensure these match your NN model export
-  const REC_NUM_FEATURES = 5; // Number of features AFTER preprocessing for NN model
-  const REC_NUM_NEIGHBORS = 10; // K value used in NN model
+  // Recommendation processing function
+  const runClientSideRecommendations = async (recInputData: {
+    carpetArea: number;
+    bedrooms: number;
+    bathrooms: number;
+    floorNumber: number;
+    totalFloorNumber: number;
+  }): Promise<Property[]> => {
+    if (!assets) throw new Error("Assets not loaded");
 
-  // --- Effect to Load ONNX Model ---
-  useEffect(() => {
-    const loadAssets = async () => {
-      try {
-        setAssetsLoading(true);
-        setAssetsError(null);
-        console.log("Attempting to load all assets...");
+    const { recPreprocessorSession, recNnSession, featureWeights, propertyIdMap, propertyMetadata } = assets;
 
-        // Define fetch options if needed (e.g., caching)
-        const fetchOptions = { cache: "no-cache" } as RequestInit; // Example: disable cache
-
-        // Define ONNX session options
-        const sessionOptions: ort.InferenceSession.options = {
-          executionProviders: ["wasm", "webgl"], // Try WASM first, fallback WebGL
-          // graphOptimizationLevel: 'all', // Optional optimization
-        };
-
-        // Load all assets concurrently
-        const [
-          predSess,
-          recPreSess,
-          recNnSess,
-          weightsRes,
-          idMapRes,
-          metadataRes,
-        ] = await Promise.all([
-          ort.InferenceSession.create(PREDICTION_MODEL_URL, sessionOptions),
-          ort.InferenceSession.create(REC_PREPROCESSOR_URL, sessionOptions),
-          ort.InferenceSession.create(REC_NN_MODEL_URL, sessionOptions),
-          fetch(FEATURE_WEIGHTS_URL, fetchOptions),
-          fetch(PROPERTY_ID_MAP_URL, fetchOptions),
-          fetch(PROPERTY_METADATA_URL, fetchOptions),
-        ]);
-
-        // Check fetch responses
-        if (!weightsRes.ok)
-          throw new Error(
-            `Failed to fetch weights: ${weightsRes.statusText}`
-          );
-        if (!idMapRes.ok)
-          throw new Error(
-            `Failed to fetch ID map: ${idMapRes.statusText}`
-          );
-        if (!metadataRes.ok)
-          throw new Error(
-            `Failed to fetch metadata: ${metadataRes.statusText}`
-          );
-
-        // Parse JSON data
-        const weightsJson = await weightsRes.json();
-        const idMapJson = await idMapRes.json();
-        const metadataJson = await metadataRes.json();
-
-        // Set state
-        setPredictionSession(predSess);
-        setRecPreprocessorSession(recPreSess);
-        setRecNnSession(recNnSess);
-        setFeatureWeights(weightsJson);
-        setPropertyIdMap(idMapJson);
-        setPropertyMetadata(metadataJson);
-
-        console.log("All assets loaded successfully:");
-        console.log("Prediction Session:", predSess);
-        console.log("Rec Preprocessor Session:", recPreSess);
-        console.log("Rec NN Session:", recNnSess);
-        console.log("Feature Weights:", weightsJson);
-
-      } catch (e) {
-        console.error("Error loading assets:", e);
-        setAssetsError(
-          `Failed to load necessary assets. Please refresh. ${
-            e instanceof Error ? e.message : String(e)
-          }`
-        );
-        // Clear potentially partially loaded state
-        setPredictionSession(null);
-        setRecPreprocessorSession(null);
-        setRecNnSession(null);
-        setFeatureWeights(null);
-        setPropertyIdMap(null);
-        setPropertyMetadata(null);
-      } finally {
-        setAssetsLoading(false);
-      }
+    // Step 1: Preprocessor
+    const preprocessorInput = {
+      carpetArea: new ort.Tensor("int64", [BigInt(recInputData.carpetArea)], [1, 1]),
+      bedrooms: new ort.Tensor("int64", [BigInt(recInputData.bedrooms)], [1, 1]),
+      bathrooms: new ort.Tensor("int64", [BigInt(recInputData.bathrooms)], [1, 1]),
+      floorNumber: new ort.Tensor("int64", [BigInt(recInputData.floorNumber)], [1, 1]),
+      totalFloorNumber: new ort.Tensor("int64", [BigInt(recInputData.totalFloorNumber)], [1, 1]),
     };
-    loadAssets();
-  }, []); // Empty dependency array ensures this runs only once on mount
 
-    // --- NEW: Function to run client-side recommendations ---
-    const runClientSideRecommendations = async (
-      // Pass only the features needed by the recommendation preprocessor
-      recInputData: {
-        carpetArea: number;
-        bedrooms: number;
-        bathrooms: number;
-        floorNumber: number;
-        totalFloorNumber: number;
-      }
-    ): Promise<Property[]> => {
-      // Check if all required assets are loaded
-      if (
-        !recPreprocessorSession ||
-        !recNnSession ||
-        !featureWeights ||
-        !propertyIdMap ||
-        !propertyMetadata
-      ) {
-        throw new Error(
-          "Recommendation assets not loaded. Cannot proceed."
-        );
-      }
-  
-      console.log("Starting client-side recommendations...");
-  
-      // --- Step 1: Run Preprocessor ONNX ---
-      // Input names MUST match the 'initial_types' used for preprocessor ONNX conversion
-      const preprocessorInput = {
-        // Assuming these are the names and they expect Int64
-        carpetArea: new ort.Tensor(
-          "int64",
-          [BigInt(recInputData.carpetArea)],
-          [1, 1]
-        ),
-        bedrooms: new ort.Tensor(
-          "int64",
-          [BigInt(recInputData.bedrooms)],
-          [1, 1]
-        ),
-        bathrooms: new ort.Tensor(
-          "int64",
-          [BigInt(recInputData.bathrooms)],
-          [1, 1]
-        ),
-        floorNumber: new ort.Tensor(
-          "int64",
-          [BigInt(recInputData.floorNumber)],
-          [1, 1]
-        ),
-        totalFloorNumber: new ort.Tensor(
-          "int64",
-          [BigInt(recInputData.totalFloorNumber)],
-          [1, 1]
-        ),
-      };
-      console.log("Rec Preprocessor Input:", preprocessorInput);
-  
-      const preprocessorResults = await recPreprocessorSession.run(
-        preprocessorInput
-      );
-      const preprocessorOutputName = recPreprocessorSession.outputNames[0];
-      const preprocessedTensor = preprocessorResults[preprocessorOutputName];
-  
-      if (!preprocessedTensor || !(preprocessedTensor.data instanceof Float32Array)) {
-          throw new Error("Preprocessor did not return a valid Float32Array tensor.");
-      }
-      const preprocessedData = Array.from(preprocessedTensor.data as Float32Array); // Convert Float32Array to regular array
-      console.log("Preprocessed Data:", preprocessedData);
-  
-      if (preprocessedData.length !== REC_NUM_FEATURES) {
-          throw new Error(`Preprocessor output length (${preprocessedData.length}) does not match expected features (${REC_NUM_FEATURES})`);
-      }
-  
-  
-      // --- Step 2: Apply Feature Weights ---
-      // The order of weights in the JSON must match the output order of the preprocessor
-      const weightedData = preprocessedData.map((value, index) => {
-        // Assuming featureWeights keys match the order implicitly or explicitly
-        // A safer approach might be to get output names from preprocessor if available
-        // For now, assume order matches: carpetArea, bedrooms, bathrooms, floorNumber, totalFloorNumber
-        const featureName = Object.keys(featureWeights)[index]; // Less robust way
-        // TODO: A more robust way is needed if preprocessor output order isn't guaranteed
-        // or if featureWeights keys don't align perfectly.
-        // For now, we rely on the order being correct as per your setup.
-        if (!featureName || featureWeights[featureName] === undefined) {
-            console.warn(`Weight not found for feature at index ${index}. Using weight 1.0`);
-            return value; // Apply weight 1 if not found (or handle error)
-        }
-        return value * featureWeights[featureName];
-      });
-      console.log("Weighted Data:", weightedData);
-  
-      // --- Step 3: Run Nearest Neighbors ONNX ---
-      const nnInputTensor = new ort.Tensor(
-        "float32",
-        new Float32Array(weightedData), // NN model expects Float32
-        [1, REC_NUM_FEATURES] // Shape [batch_size, num_features]
-      );
-      const nnInputName = recNnSession.inputNames[0]; // Get the actual input name
-      const nnFeeds = { [nnInputName]: nnInputTensor };
-  
-      console.log("Rec NN Input:", nnFeeds);
-      const nnResults = await recNnSession.run(nnFeeds);
-      console.log("Rec NN Results:", nnResults);
-  
-      // --- Step 4: Get Indices ---
-      // Output names depend on skl2onnx version and model type.
-      // Usually 'output_label' or 'indices' for indices, 'output_probability' or 'distances' for distances.
-      // Check recNnSession.outputNames if unsure. Let's assume standard order [indices, distances]
-      const indicesOutputName = recNnSession.outputNames[0];
-      const distancesOutputName = recNnSession.outputNames[1]; // We don't use distances here, but good to know
-  
-      const indicesTensor = nnResults[indicesOutputName];
-      // Indices might be Int64, represented as BigInt64Array in JS
-      const neighborIndices = Array.from(indicesTensor.data as BigInt64Array | Int32Array).map(Number); // Convert BigInt/Int32 to number
-      console.log("Neighbor Indices:", neighborIndices);
-  
-      // --- Step 5: Map Indices to Property IDs ---
-      const recommendedPropertyIds = neighborIndices.map((index) => {
-        if (index < 0 || index >= propertyIdMap.length) {
-          console.error(`Invalid index ${index} from NN model.`);
-          return null; // Handle invalid index
-        }
-        return propertyIdMap[index];
-      }).filter(id => id !== null) as string[]; // Filter out any nulls
-      console.log("Recommended Property IDs:", recommendedPropertyIds);
-  
-  
-      // --- Step 6: Fetch Metadata ---
-      const finalRecommendations: Property[] = recommendedPropertyIds
-        .map((id) => {
-          const meta = propertyMetadata[id];
-          if (!meta) {
-            console.warn(`Metadata not found for property ID: ${id}`);
-            return null;
-          }
-          // Optionally add the original ID to the property object if not already present
-          return { ...meta, id: id };
-        })
-        .filter((p): p is Property => p !== null); // Type guard to filter nulls
-  
-      console.log("Final Recommendations:", finalRecommendations);
-      return finalRecommendations;
-    };
-  
+    const preprocessorResults = await recPreprocessorSession.run(preprocessorInput);
+    const preprocessedTensor = preprocessorResults[recPreprocessorSession.outputNames[0]];
+    const preprocessedData = Array.from(preprocessedTensor.data as Float32Array);
 
-  // --- Handle Form Submission ---
+    // Step 2: Apply weights
+    const weightedData = preprocessedData.map((value, index) => {
+      const featureName = Object.keys(featureWeights)[index];
+      return value * (featureWeights[featureName] || 1.0);
+    });
+
+    // Step 3: Nearest neighbors
+    const nnInputTensor = new ort.Tensor("float32", new Float32Array(weightedData), [1, weightedData.length]);
+    const nnResults = await recNnSession.run({ [recNnSession.inputNames[0]]: nnInputTensor });
+    const indicesTensor = nnResults[recNnSession.outputNames[0]];
+    const neighborIndices = Array.from(indicesTensor.data as BigInt64Array | Int32Array).map(Number);
+
+    // Step 4: Get recommendations
+    const recommendedPropertyIds = neighborIndices
+      .filter(index => index >= 0 && index < propertyIdMap.length)
+      .map(index => propertyIdMap[index]);
+
+    const finalRecommendations: Property[] = recommendedPropertyIds
+      .map(id => {
+        const meta = propertyMetadata[id];
+        return meta ? { ...meta, id } : null;
+      })
+      .filter((p): p is Property => p !== null);
+
+    return finalRecommendations;
+  };
+
+  // Form submission handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMsg("");
+    setFormError("");
     setPrediction(null);
-    setRecommendations([]); // Clear previous recommendations
+    setRecommendations([]);
 
-    // --- Input/form validation ---
-    if (floorNumber > totalFloorNumber) {
-      setErrorMsg("Current floor cannot be greater than total floors.");
-      return;
-    }
-    if (bedrooms < 1 || bedrooms > 15) {
-      setErrorMsg("Bedrooms must be between 1 and 15.");
-      return;
-    }
-    if (bathrooms < 1 || bathrooms > 15) {
-      setErrorMsg("Bathrooms must be between 1 and 15.");
-      return;
-    }
-    if (carpetArea < 100 || carpetArea > 10000) {
-      setErrorMsg("Carpet Area must be between 100 and 10,000 sqft.");
-      return;
-    }
-    if (floorNumber < 0 || floorNumber > 75) {
-      setErrorMsg("Current floor must be between 0 and 75.");
-      return;
-    }
-    if (totalFloorNumber < 0 || totalFloorNumber > 75) {
-      setErrorMsg("Total floors must be between 0 and 75.");
+    // Validation
+    if (formData.floorNumber > formData.totalFloorNumber) {
+      setFormError("Current floor cannot be greater than total floors.");
       return;
     }
 
-    // --- Check if ALL Assets are Ready ---
-    if (assetsLoading) {
-      setErrorMsg("Assets are still loading. Please wait.");
-      return;
-    }
-    if (assetsError || !predictionSession || !recPreprocessorSession || !recNnSession || !featureWeights || !propertyIdMap || !propertyMetadata) {
-      setErrorMsg(assetsError || "One or more required assets failed to load. Please refresh.");
+    if (!isReady || !assets) {
+      setFormError("Models are still loading. Please wait.");
       return;
     }
 
-    // --- Start Loading State ---
-    setLoading(true); // Use combined loading state
+    setProcessing(true);
 
     try {
-      // --- Run Prediction (Keep this part as is) ---
-      const predictionInputTensor = {
-        localityName: new ort.Tensor("string", [localityName], [1, 1]),
-        carpetArea: new ort.Tensor("int64", [BigInt(carpetArea)], [1, 1]),
-        floorNumber: new ort.Tensor("int64", [BigInt(floorNumber)], [1, 1]),
-        totalFloorNumber: new ort.Tensor("int64", [BigInt(totalFloorNumber)], [1, 1]),
-        transactionType: new ort.Tensor("string", [transactionType], [1, 1]),
-        furnished: new ort.Tensor("string", [furnished], [1, 1]),
-        bedrooms: new ort.Tensor("int64", [BigInt(bedrooms)], [1, 1]),
-        bathrooms: new ort.Tensor("int64", [BigInt(bathrooms)], [1, 1]),
-        ageofcons: new ort.Tensor("string", [ageofcons], [1, 1]),
+      // Prediction
+      const predictionInput = {
+        localityName: new ort.Tensor("string", [formData.localityName], [1, 1]),
+        carpetArea: new ort.Tensor("int64", [BigInt(formData.carpetArea)], [1, 1]),
+        floorNumber: new ort.Tensor("int64", [BigInt(formData.floorNumber)], [1, 1]),
+        totalFloorNumber: new ort.Tensor("int64", [BigInt(formData.totalFloorNumber)], [1, 1]),
+        transactionType: new ort.Tensor("string", [formData.transactionType], [1, 1]),
+        furnished: new ort.Tensor("string", [formData.furnished], [1, 1]),
+        bedrooms: new ort.Tensor("int64", [BigInt(formData.bedrooms)], [1, 1]),
+        bathrooms: new ort.Tensor("int64", [BigInt(formData.bathrooms)], [1, 1]),
+        ageofcons: new ort.Tensor("string", [formData.ageofcons], [1, 1]),
       };
-      console.log("Running prediction inference with input:", predictionInputTensor);
-      const predictionResults = await predictionSession.run(predictionInputTensor);
-      const predictionOutputName = predictionSession.outputNames[0];
-      const predictionOutputTensor = predictionResults[predictionOutputName];
-      if (!predictionOutputTensor) throw new Error("Prediction output tensor not found.");
-      const predictedPrice = (predictionOutputTensor.data as Float32Array)[0];
+
+      const predictionResults = await assets.predictionSession.run(predictionInput);
+      const predictedPrice = (predictionResults[assets.predictionSession.outputNames[0]].data as Float32Array)[0];
       const formattedPrice = Math.round(predictedPrice).toLocaleString("en-IN");
-      setPrediction(`Estimated Price: ₹ ${formattedPrice}`);
-      console.log("Prediction successful:", formattedPrice);
+      setPrediction(formattedPrice);
 
-
-      // --- Run Client-Side Recommendations ---
-      // Prepare input data specifically for the recommendation preprocessor
-      const recommendationInputData = {
-        carpetArea,
-        bedrooms,
-        bathrooms,
-        floorNumber,
-        totalFloorNumber,
-        // Add other features IF your recommendation preprocessor expects them
-      };
-
-      const recs = await runClientSideRecommendations(recommendationInputData);
+      // Recommendations
+      const recs = await runClientSideRecommendations({
+        carpetArea: formData.carpetArea,
+        bedrooms: formData.bedrooms,
+        bathrooms: formData.bathrooms,
+        floorNumber: formData.floorNumber,
+        totalFloorNumber: formData.totalFloorNumber,
+      });
       setRecommendations(recs);
 
     } catch (error) {
-      console.error("Error during prediction or recommendation:", error);
-      setErrorMsg(
-        `Processing failed. ${error instanceof Error ? error.message : String(error)}`
-      );
-      setPrediction(null); // Clear prediction on error
-      setRecommendations([]); // Clear recommendations on error
+      console.error("Prediction error:", error);
+      setFormError(`Prediction failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
-      setLoading(false); // Stop loading indicator
+      setProcessing(false);
     }
   };
 
-  // --- JSX Rendering (Mostly unchanged) ---
-  // Add checks for assetsLoading and assetsError at the top level if desired
-  if (assetsLoading) {
-    return <div>Loading models and data...</div>;
-  }
-
-  if (assetsError) {
-    return <div>Error loading assets: {assetsError}</div>;
-  }
+  const updateFormData = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
   return (
-    <>
-      <div className="card shadow-sm p-4 my-5">
-        <h2 className="fw-bold mb-3">Estimate Your Home&apos;s Price</h2>
-        <p className="text-muted mb-4">
-          Enter your property details below to get an instant price estimate.
-        </p>
-        <form onSubmit={handleSubmit} noValidate>
-          {/* Locality with search-enabled datalist */}
-          <div className="mb-3">
-            <label htmlFor="locality" className="form-label">
-              Locality
-            </label>
-            <input
-              type="text"
-              id="locality"
-              name="locality"
-              className="form-control"
-              placeholder="Start typing to search..."
-              value={localityName}
-              onChange={(e) => setLocality(e.target.value)}
-              list="localityOptions"
-              required
-            />
-            <datalist id="localityOptions">
-              {options.localityName.map((loc, index) => (
-                <option value={loc} key={index} />
-              ))}
-            </datalist>
-          </div>
+    <div className="space-y-6">
+      {/* Asset Loading Status */}
+      <AssetLoadingIndicator
+        loadingState={loadingState}
+        isLoading={assetsLoading}
+        error={assetsError}
+        onRetry={retryLoading}
+        onClearCache={clearCache}
+      />
 
-          {/* Three numerical inputs in one row: Carpet Area, Bedrooms, Bathrooms */}
-          <div className="row">
-            <div className="mb-3 col-md-4">
-              <label htmlFor="carpetArea" className="form-label">
-                Carpet Area (sqft)
-              </label>
-              <input
-                type="number"
-                id="carpetArea"
-                name="carpetArea"
-                className="form-control"
-                min={100}
-                max={10000}
-                value={carpetArea}
-                onChange={(e) =>
-                  setCarpetArea(parseInt(e.target.value, 10))
-                }
-                required
-              />
+      {/* Main Form Card */}
+      <Card className="shadow-lg border-0 bg-white/95 backdrop-blur-sm">
+        <CardHeader className="space-y-2">
+          <div className="flex items-center space-x-2">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Home className="w-5 h-5 text-blue-600" />
             </div>
-            <div className="mb-3 col-md-4">
-              <label htmlFor="bedrooms" className="form-label">
-                Bedrooms
-              </label>
-              <input
-                type="number"
-                id="bedrooms"
-                name="bedrooms"
-                className="form-control"
-                min={1}
-                max={15}
-                value={bedrooms}
-                onChange={(e) =>
-                  setBedrooms(parseInt(e.target.value, 10))
-                }
-                required
-              />
-            </div>
-            <div className="mb-3 col-md-4">
-              <label htmlFor="bathrooms" className="form-label">
-                Bathrooms
-              </label>
-              <input
-                type="number"
-                id="bathrooms"
-                name="bathrooms"
-                className="form-control"
-                min={1}
-                max={15}
-                value={bathrooms}
-                onChange={(e) =>
-                  setBathrooms(parseInt(e.target.value, 10))
-                }
-                required
-              />
+            <div>
+              <CardTitle className="text-xl text-slate-800">Property Price Predictor</CardTitle>
+              <CardDescription>
+                Get instant AI-powered price estimates for Pune properties
+              </CardDescription>
             </div>
           </div>
+        </CardHeader>
 
-          {/* Two numerical inputs: Current Floor and Total Floors */}
-          <div className="row">
-            <div className="mb-3 col-md-6">
-              <label htmlFor="floorNumber" className="form-label">
-                Current Floor
-              </label>
-              <input
-                type="number"
-                id="floorNumber"
-                name="floorNumber"
-                className="form-control"
-                min={0}
-                max={75}
-                value={floorNumber}
-                onChange={(e) =>
-                  setFloorNumber(parseInt(e.target.value, 10))
-                }
-                required
-              />
+        <CardContent className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Location Section */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2 text-sm font-medium text-slate-700">
+                <MapPin className="w-4 h-4" />
+                <span>Location Details</span>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="locality">Locality</Label>
+                  <Select value={formData.localityName} onValueChange={(value) => updateFormData('localityName', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select locality" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {options.localityName.map((locality, index) => (
+                        <SelectItem key={index} value={locality}>
+                          {locality}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
-            <div className="mb-3 col-md-6">
-              <label htmlFor="totalFloors" className="form-label">
-                Total Floors
-              </label>
-              <input
-                type="number"
-                id="totalFloors"
-                name="totalFloors"
-                className="form-control"
-                min={0}
-                max={75}
-                value={totalFloorNumber}
-                onChange={(e) =>
-                  setTotalFloors(parseInt(e.target.value, 10))
-                }
-                required
-              />
-            </div>
-          </div>
 
-          {/* Three dropdown selects: Transaction Type, Age of Construction, Furnishing */}
-          <div className="row">
-            <div className="mb-3 col-md-4">
-              <label htmlFor="transactionType" className="form-label">
-                Transaction Type
-              </label>
-              <select
-                id="transactionType"
-                name="transactionType"
-                className="form-select"
-                value={transactionType}
-                onChange={(e) =>
-                  setTransactionType(e.target.value)
-                }
-              >
-                {options.transactionType.map((type, index) => (
-                  <option value={type} key={index}>
-                    {type}
-                  </option>
-                ))}
-              </select>
+            {/* Property Details Section */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2 text-sm font-medium text-slate-700">
+                <Building className="w-4 h-4" />
+                <span>Property Details</span>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="carpetArea">Carpet Area (sqft)</Label>
+                  <Input
+                    id="carpetArea"
+                    type="number"
+                    min="100"
+                    max="10000"
+                    value={formData.carpetArea}
+                    onChange={(e) => updateFormData('carpetArea', parseInt(e.target.value) || 0)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="bedrooms" className="flex items-center space-x-1">
+                    <Bed className="w-3 h-3" />
+                    <span>Bedrooms</span>
+                  </Label>
+                  <Input
+                    id="bedrooms"
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={formData.bedrooms}
+                    onChange={(e) => updateFormData('bedrooms', parseInt(e.target.value) || 1)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="bathrooms" className="flex items-center space-x-1">
+                    <Bath className="w-3 h-3" />
+                    <span>Bathrooms</span>
+                  </Label>
+                  <Input
+                    id="bathrooms"
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={formData.bathrooms}
+                    onChange={(e) => updateFormData('bathrooms', parseInt(e.target.value) || 1)}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="mb-3 col-md-4">
-              <label htmlFor="ageOfConstruction" className="form-label">
-                Age of Construction
-              </label>
-              <select
-                id="ageOfConstruction"
-                name="ageOfConstruction"
-                className="form-select"
-                value={ageofcons}
-                onChange={(e) =>
-                  setAgeOfConstruction(e.target.value)
-                }
-              >
-                {options.ageofcons.map((age, index) => (
-                  <option value={age} key={index}>
-                    {age}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="mb-3 col-md-4">
-              <label htmlFor="furnished" className="form-label">
-                Furnishing Status
-              </label>
-              <select
-                id="furnished"
-                name="furnished"
-                className="form-select"
-                value={furnished}
-                onChange={(e) =>
-                  setFurnished(e.target.value)
-                }
-              >
-                {options.furnished.map((option, index) => (
-                  <option value={option} key={index}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
 
-          {/* Display error messages if present */}
-          {errorMsg && (
-            <div className="alert alert-warning" role="alert">
-              {errorMsg}
+            {/* Floor Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="floorNumber">Current Floor</Label>
+                <Input
+                  id="floorNumber"
+                  type="number"
+                  min="0"
+                  max="50"
+                  value={formData.floorNumber}
+                  onChange={(e) => updateFormData('floorNumber', parseInt(e.target.value) || 0)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="totalFloors">Total Floors</Label>
+                <Input
+                  id="totalFloors"
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={formData.totalFloorNumber}
+                  onChange={(e) => updateFormData('totalFloorNumber', parseInt(e.target.value) || 1)}
+                />
+              </div>
             </div>
-          )}
 
-          {/* Submit button with loading spinner */}
-          <div className="d-flex align-items-center">
-            <button
+            {/* Additional Details */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2 text-sm font-medium text-slate-700">
+                <Palette className="w-4 h-4" />
+                <span>Additional Features</span>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="transactionType">Transaction Type</Label>
+                  <Select value={formData.transactionType} onValueChange={(value) => updateFormData('transactionType', value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {options.transactionType.map((type, index) => (
+                        <SelectItem key={index} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="ageofcons">Age of Construction</Label>
+                  <Select value={formData.ageofcons} onValueChange={(value) => updateFormData('ageofcons', value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {options.ageofcons.map((age, index) => (
+                        <SelectItem key={index} value={age}>
+                          {age}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="furnished">Furnishing Status</Label>
+                  <Select value={formData.furnished} onValueChange={(value) => updateFormData('furnished', value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {options.furnished.map((option, index) => (
+                        <SelectItem key={index} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Error Alert */}
+            {formError && (
+              <Alert className="border-red-200 bg-red-50">
+                <AlertDescription className="text-red-800">
+                  {formError}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Submit Button */}
+            <Button
               type="submit"
-              className="btn btn-primary me-3"
-              disabled={loading}
+              size="lg"
+              disabled={!isReady || processing}
+              className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
             >
-              {loading ? (
+              {processing ? (
                 <>
-                  <span
-                    className="spinner-border spinner-border-sm me-2"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
-                  Getting Price...
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : !isReady ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Loading Models...
                 </>
               ) : (
-                "Get Price Estimate"
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Get Price Estimate
+                </>
               )}
-            </button>
-          </div>
-        </form>
+            </Button>
+          </form>
 
-        {/* Display prediction result after successful API call */}
-        {prediction && (
-          <div className="mt-4 alert alert-success" role="alert">
-            {prediction}
-          </div>
-        )}
-      </div>
+          {/* Prediction Result */}
+          {prediction && (
+            <Card className="bg-gradient-to-r from-emerald-50 to-blue-50 border-emerald-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-emerald-100 rounded-lg">
+                    <TrendingUp className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-600">Estimated Property Value</p>
+                    <p className="text-2xl font-bold text-slate-800">
+                      ₹ {prediction}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Property Recommendations Section */}
-      {(recommendations.length > 0 || loading) && (
-        <div className="property-recommendations">
-          <h3 className="section-title">Similar Properties You Might Like</h3>
-          
-          {loading && (
-            <div className="text-center my-5">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading recommendations...</span>
-              </div>
-              <p className="mt-3 text-muted">Finding similar properties...</p>
+      {/* Recommendations Section */}
+      {recommendations.length > 0 && (
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Sparkles className="w-5 h-5 text-amber-500" />
+              <span>Similar Properties You Might Like</span>
+            </CardTitle>
+            <CardDescription>
+              Based on your search criteria, here are some similar properties
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4">
+              {recommendations.slice(0, 5).map((property, index) => (
+                <PropertyCard key={property.propertyId || index} property={property} />
+              ))}
             </div>
-          )}
-          
-          {errorMsg && (
-            <div className="alert alert-warning" role="alert">
-              {errorMsg}
-            </div>
-          )}
-          
-          {recommendations.map((property) => (
-            <PropertyCard key={property.propertyId} property={property} />
-          ))}
-        </div>
+          </CardContent>
+        </Card>
       )}
-    </>
+    </div>
   );
 };
 

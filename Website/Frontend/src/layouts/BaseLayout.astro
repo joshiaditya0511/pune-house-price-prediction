@@ -16,11 +16,11 @@ const {
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
     <meta name="description" content={description} />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
@@ -35,13 +35,11 @@ const {
     >
     </script>
   </head>
-  <body class="d-flex flex-column min-vh-100">
+  <body class="min-h-screen flex flex-col bg-slate-50 text-slate-900">
     <Header />
-    <!-- Add padding-top to main content area to offset fixed navbar -->
-    <main class="flex-shrink-0" style="padding-top: 70px;">
+    <main class="flex-1 pt-16">
       <slot />
     </main>
     <Footer />
-
   </body>
 </html>

@@ -4,5 +4,33 @@
         "source": "/script.js",
         "destination": "https://cloud.umami.is/script.js"
       }
-    ]
+    ],
+    "headers": [
+    {
+      "source": "/(.*\\.onnx)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, immutable"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
+      ]
+    },
+    {
+      "source": "/(.*(feature_weights|property_ids|property_metadata)\\.json)",
+      "headers": [
+        {
+          "key": "Cache-Control", 
+          "value": "public, max-age=3600"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
+      ]
+    }
+  ]
 }
