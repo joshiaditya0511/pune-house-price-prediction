@@ -1,6 +1,6 @@
 import React from 'react';
 import { AssetLoadingState } from '../services/AssetManager';
-import { AlertCircle, CheckCircle, Download, Loader2, RefreshCw } from 'lucide-react';
+import { FaExclamationTriangle, FaCheckCircle, FaDownload, FaSpinner, FaRedo } from 'react-icons/fa';
 
 interface Props {
   loadingState: AssetLoadingState;
@@ -23,7 +23,7 @@ export const AssetLoadingIndicator: React.FC<Props> = ({
       <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <CheckCircle className="w-5 h-5 text-emerald-600" />
+            <FaCheckCircle className="w-5 h-5 text-emerald-600" />
             <div>
               <p className="text-emerald-800 font-medium text-sm">Models Ready</p>
               <p className="text-emerald-700 text-xs">All AI models loaded successfully</p>
@@ -47,7 +47,7 @@ export const AssetLoadingIndicator: React.FC<Props> = ({
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
         <div className="flex items-start space-x-3">
-          <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+          <FaExclamationTriangle className="w-5 h-5 text-red-600 mt-0.5" />
           <div className="flex-1">
             <p className="text-red-800 font-medium text-sm">Failed to Load Models</p>
             <p className="text-red-700 text-xs mt-1">{error || loadingState.message}</p>
@@ -57,7 +57,7 @@ export const AssetLoadingIndicator: React.FC<Props> = ({
                   onClick={onRetry}
                   className="flex items-center space-x-1 text-red-600 hover:text-red-700 text-xs font-medium"
                 >
-                  <RefreshCw className="w-3 h-3" />
+                  <FaRedo className="w-3 h-3" />
                   <span>Retry</span>
                 </button>
               )}
@@ -81,11 +81,11 @@ export const AssetLoadingIndicator: React.FC<Props> = ({
     const getIcon = () => {
       switch (loadingState.stage) {
         case 'downloading':
-          return <Download className="w-4 h-4 text-blue-600" />;
+          return <FaDownload className="w-4 h-4 text-blue-600" />;
         case 'parsing':
-          return <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />;
+          return <FaSpinner className="w-4 h-4 text-blue-600 animate-spin" />;
         default:
-          return <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />;
+          return <FaSpinner className="w-4 h-4 text-blue-600 animate-spin" />;
       }
     };
 

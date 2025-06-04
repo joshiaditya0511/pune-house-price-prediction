@@ -8,11 +8,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Home, MapPin, Bed, Bath, Building, Calendar, Palette, TrendingUp, Loader2, Sparkles } from "lucide-react";
+import { 
+  FaHome, 
+  FaMapMarkerAlt, 
+  FaBed, 
+  FaBath, 
+  FaBuilding, 
+  FaCalendarAlt, 
+  FaPalette, 
+  FaSpinner,
+  FaMagic,
+  FaExclamationTriangle,
+  FaCheckCircle,
+  FaDownload,
+  FaRedo
+} from 'react-icons/fa';
+import {FaArrowTrendUp} from 'react-icons/fa6';
 import * as ort from "onnxruntime-web";
 import options from "../data/options_iteration_3.json";
 import PropertyCard from "./PropertyCard";
 import type { Property } from "../types";
+
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { FaCheck, FaChevronDown } from 'react-icons/fa';
+import { cn } from "@/lib/utils";
 
 const PredictionForm: React.FC = () => {
   // Asset management
@@ -36,6 +56,7 @@ const PredictionForm: React.FC = () => {
   const [recommendations, setRecommendations] = useState<Property[]>([]);
   const [processing, setProcessing] = useState(false);
   const [formError, setFormError] = useState("");
+  const [localityOpen, setLocalityOpen] = useState(false);
 
   // Recommendation processing function
   const runClientSideRecommendations = async (recInputData: {
@@ -166,12 +187,12 @@ const PredictionForm: React.FC = () => {
         <CardHeader className="space-y-2">
           <div className="flex items-center space-x-2">
             <div className="p-2 bg-blue-100 rounded-lg">
-              <Home className="w-5 h-5 text-blue-600" />
+              <FaHome className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <CardTitle className="text-xl text-slate-800">Property Price Predictor</CardTitle>
-              <CardDescription>
-                Get instant AI-powered price estimates for Pune properties
+              <CardTitle className="text-xl md:text-2xl text-slate-800">Property Price Predictor</CardTitle>
+              <CardDescription className="text-sm md:text-base">
+                Get AI-powered price estimates for Pune properties
               </CardDescription>
             </div>
           </div>
@@ -181,40 +202,67 @@ const PredictionForm: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Location Section */}
             <div className="space-y-4">
-              <div className="flex items-center space-x-2 text-sm font-medium text-slate-700">
-                <MapPin className="w-4 h-4" />
+              <div className="flex items-center space-x-2 text-sm md:text-base font-medium text-slate-700">
+                <FaMapMarkerAlt className="w-4 h-4" />
                 <span>Location Details</span>
               </div>
               
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="locality">Locality</Label>
-                  <Select value={formData.localityName} onValueChange={(value) => updateFormData('localityName', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select locality" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {options.localityName.map((locality, index) => (
-                        <SelectItem key={index} value={locality}>
-                          {locality}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="locality" className="text-sm md:text-base">Locality</Label>
+                  <Popover open={localityOpen} onOpenChange={setLocalityOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={localityOpen}
+                        className="w-full justify-between"
+                      >
+                        {formData.localityName || "Select locality..."}
+                        <FaChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0">
+                      <Command>
+                        <CommandInput placeholder="Search locality..." />
+                        <CommandEmpty>No locality found.</CommandEmpty>
+                        <CommandGroup className="max-h-64 overflow-auto">
+                          {options.localityName.map((locality) => (
+                            <CommandItem
+                              key={locality}
+                              value={locality}
+                              onSelect={(currentValue) => {
+                                updateFormData('localityName', currentValue === formData.localityName ? "" : currentValue);
+                                setLocalityOpen(false);
+                              }}
+                            >
+                              <FaCheck
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.localityName === locality ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {locality}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
             </div>
 
             {/* Property Details Section */}
             <div className="space-y-4">
-              <div className="flex items-center space-x-2 text-sm font-medium text-slate-700">
-                <Building className="w-4 h-4" />
+              <div className="flex items-center space-x-2 text-sm md:text-base font-medium text-slate-700">
+                <FaBuilding className="w-4 h-4" />
                 <span>Property Details</span>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="carpetArea">Carpet Area (sqft)</Label>
+                  <Label htmlFor="carpetArea" className="text-sm md:text-base">Carpet Area (sqft)</Label>
                   <Input
                     id="carpetArea"
                     type="number"
@@ -226,8 +274,8 @@ const PredictionForm: React.FC = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="bedrooms" className="flex items-center space-x-1">
-                    <Bed className="w-3 h-3" />
+                  <Label htmlFor="bedrooms" className="flex items-center space-x-1 text-sm md:text-base">
+                    <FaBed className="w-3 h-3" />
                     <span>Bedrooms</span>
                   </Label>
                   <Input
@@ -241,8 +289,8 @@ const PredictionForm: React.FC = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="bathrooms" className="flex items-center space-x-1">
-                    <Bath className="w-3 h-3" />
+                  <Label htmlFor="bathrooms" className="flex items-center space-x-1 text-sm md:text-base">
+                    <FaBath className="w-3 h-3" />
                     <span>Bathrooms</span>
                   </Label>
                   <Input
@@ -260,7 +308,7 @@ const PredictionForm: React.FC = () => {
             {/* Floor Details */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="floorNumber">Current Floor</Label>
+                <Label htmlFor="floorNumber" className="text-sm md:text-base">Current Floor</Label>
                 <Input
                   id="floorNumber"
                   type="number"
@@ -272,7 +320,7 @@ const PredictionForm: React.FC = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="totalFloors">Total Floors</Label>
+                <Label htmlFor="totalFloors" className="text-sm md:text-base">Total Floors</Label>
                 <Input
                   id="totalFloors"
                   type="number"
@@ -286,14 +334,13 @@ const PredictionForm: React.FC = () => {
 
             {/* Additional Details */}
             <div className="space-y-4">
-              <div className="flex items-center space-x-2 text-sm font-medium text-slate-700">
-                <Palette className="w-4 h-4" />
+              <div className="flex items-center space-x-2 text-sm md:text-base font-medium text-slate-700">
+                <FaPalette className="w-4 h-4" />
                 <span>Additional Features</span>
               </div>
-              
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="transactionType">Transaction Type</Label>
+                  <Label htmlFor="transactionType" className="text-sm md:text-base">Transaction Type</Label>
                   <Select value={formData.transactionType} onValueChange={(value) => updateFormData('transactionType', value)}>
                     <SelectTrigger>
                       <SelectValue />
@@ -309,7 +356,7 @@ const PredictionForm: React.FC = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="ageofcons">Age of Construction</Label>
+                  <Label htmlFor="ageofcons" className="text-sm md:text-base">Age of Construction</Label>
                   <Select value={formData.ageofcons} onValueChange={(value) => updateFormData('ageofcons', value)}>
                     <SelectTrigger>
                       <SelectValue />
@@ -325,7 +372,7 @@ const PredictionForm: React.FC = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="furnished">Furnishing Status</Label>
+                  <Label htmlFor="furnished" className="text-sm md:text-base">Furnishing Status</Label>
                   <Select value={formData.furnished} onValueChange={(value) => updateFormData('furnished', value)}>
                     <SelectTrigger>
                       <SelectValue />
@@ -356,21 +403,21 @@ const PredictionForm: React.FC = () => {
               type="submit"
               size="lg"
               disabled={!isReady || processing}
-              className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+              className="w-full md:w-auto bg-blue-600 hover:bg-blue-700"
             >
               {processing ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <FaSpinner className="w-4 h-4 mr-2 animate-spin" />
                   Processing...
                 </>
               ) : !isReady ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <FaSpinner className="w-4 h-4 mr-2 animate-spin" />
                   Loading Models...
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4 mr-2" />
+                  <FaMagic className="w-4 h-4 mr-2" />
                   Get Price Estimate
                 </>
               )}
@@ -378,23 +425,21 @@ const PredictionForm: React.FC = () => {
           </form>
 
           {/* Prediction Result */}
-          {prediction && (
-            <Card className="bg-gradient-to-r from-emerald-50 to-blue-50 border-emerald-200">
-              <CardContent className="pt-6">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-emerald-100 rounded-lg">
-                    <TrendingUp className="w-5 h-5 text-emerald-600" />
+            {prediction && (
+              <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
+                <CardContent className="pt-6">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <FaArrowTrendUp className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-600">Estimated Property Value</p>
+                      <p className="text-2xl font-bold text-slate-800">₹ {prediction}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-600">Estimated Property Value</p>
-                    <p className="text-2xl font-bold text-slate-800">
-                      ₹ {prediction}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                </CardContent>
+              </Card>
+            )}
         </CardContent>
       </Card>
 
@@ -402,10 +447,10 @@ const PredictionForm: React.FC = () => {
       {recommendations.length > 0 && (
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Sparkles className="w-5 h-5 text-amber-500" />
-              <span>Similar Properties You Might Like</span>
-            </CardTitle>
+          <CardTitle className="flex items-center space-x-2">
+            <FaMagic className="w-5 h-5 text-amber-500" />
+            <span>Similar Properties You Might Like</span>
+          </CardTitle>
             <CardDescription>
               Based on your search criteria, here are some similar properties
             </CardDescription>
