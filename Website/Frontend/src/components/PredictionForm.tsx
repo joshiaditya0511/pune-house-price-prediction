@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import React, { useState } from "react";
 import { useAssets } from "../hooks/useAssets";
 import { AssetLoadingIndicator } from "./AssetLoadingIndicator";

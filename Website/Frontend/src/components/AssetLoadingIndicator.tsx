@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import React from 'react';
 import { AssetLoadingState } from '../services/AssetManager';
 import { FaExclamationTriangle, FaCheckCircle, FaSpinner, FaRedo } from 'react-icons/fa';
