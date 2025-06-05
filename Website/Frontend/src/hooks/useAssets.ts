@@ -8,7 +8,7 @@ interface UseAssetsReturn {
   loadingState: AssetLoadingState;
   error: string | null;
   retryLoading: () => void;
-  clearCache: () => void;
+  // clearCache: () => void;
 }
 
 export const useAssets = (): UseAssetsReturn => {
@@ -81,6 +81,6 @@ export const useAssets = (): UseAssetsReturn => {
     loadingState,
     error,
     retryLoading,
-    clearCache
+    // clearCache
   };
 };

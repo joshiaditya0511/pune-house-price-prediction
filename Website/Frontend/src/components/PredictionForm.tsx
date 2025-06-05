@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils";
 
 const PredictionForm: React.FC = () => {
   // Asset management
-  const { assets, isLoading: assetsLoading, isReady, loadingState, error: assetsError, retryLoading, clearCache } = useAssets();
+  const { assets, isLoading: assetsLoading, isReady, loadingState, error: assetsError, retryLoading } = useAssets();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -179,7 +179,6 @@ const PredictionForm: React.FC = () => {
         isLoading={assetsLoading}
         error={assetsError}
         onRetry={retryLoading}
-        onClearCache={clearCache}
       />
 
       {/* Main Form Card */}
@@ -445,24 +444,19 @@ const PredictionForm: React.FC = () => {
 
       {/* Recommendations Section */}
       {recommendations.length > 0 && (
-        <Card className="shadow-lg">
-          <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2 mb-6">
             <FaMagic className="w-5 h-5 text-amber-500" />
-            <span>Similar Properties You Might Like</span>
-          </CardTitle>
-            <CardDescription>
-              Based on your search criteria, here are some similar properties
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4">
-              {recommendations.slice(0, 5).map((property, index) => (
-                <PropertyCard key={property.propertyId || index} property={property} />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+            <h3 className="text-xl font-semibold text-gray-800">Similar Properties You Might Like</h3>
+          </div>
+          <p className="text-gray-600 mb-6">Based on your search criteria, here are some similar properties</p>
+          
+          <div className="space-y-4">
+            {recommendations.map((property, index) => (
+              <PropertyCard key={property.propertyId || index} property={property} />
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
