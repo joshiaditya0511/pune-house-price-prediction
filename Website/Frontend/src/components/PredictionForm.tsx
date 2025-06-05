@@ -4,43 +4,69 @@ import React, { useState } from "react";
 import { useAssets } from "../hooks/useAssets";
 import { AssetLoadingIndicator } from "./AssetLoadingIndicator";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+// Input is now part of NumericInputWithControls for these fields
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { 
-  FaHome, 
-  FaMapMarkerAlt, 
-  FaBed, 
-  FaBath, 
-  FaBuilding, 
-  FaCalendarAlt, 
-  FaPalette, 
+// Badge is not used in the form itself, can be removed if not used elsewhere from this file
+// import { Badge } from "@/components/ui/badge";
+import {
+  FaHome,
+  FaMapMarkerAlt,
+  FaBed,
+  FaBath,
+  FaBuilding,
+  // FaCalendarAlt, // Not used
+  FaPalette,
   FaSpinner,
   FaMagic,
-  FaExclamationTriangle,
-  FaCheckCircle,
-  FaDownload,
-  FaRedo
-} from 'react-icons/fa';
-import {FaArrowTrendUp} from 'react-icons/fa6';
+  // FaExclamationTriangle, // Not used directly, Alert handles icon
+  // FaCheckCircle, // Not used
+  // FaDownload, // Not used
+  // FaRedo, // Not used
+  FaPlus, // Added
+  FaMinus, // Added
+} from "react-icons/fa";
+import { FaArrowTrendUp } from "react-icons/fa6";
 import * as ort from "onnxruntime-web";
 import options from "../data/options_iteration_3.json";
 import PropertyCard from "./PropertyCard";
 import type { Property } from "../types";
 
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { FaCheck, FaChevronDown } from 'react-icons/fa';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { FaCheck, FaChevronDown } from "react-icons/fa";
 import { cn } from "@/lib/utils";
+import NumericInputWithControls from "./NumericInputWithControls"; // Import the new component
 
 const PredictionForm: React.FC = () => {
   // Asset management
   const { assets, isLoading: assetsLoading, isReady, loadingState, error: assetsError, retryLoading } = useAssets();
 
-  // Form state
+// Form state (no change to structure, just how it's updated for numerics)
   const [formData, setFormData] = useState({
     localityName: "",
     carpetArea: 1000,
@@ -170,12 +196,11 @@ const PredictionForm: React.FC = () => {
   };
 
   const updateFormData = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  return (
+return (
     <div className="space-y-6">
-      {/* Asset Loading Status */}
       <AssetLoadingIndicator
         loadingState={loadingState}
         isLoading={assetsLoading}
@@ -183,15 +208,16 @@ const PredictionForm: React.FC = () => {
         onRetry={retryLoading}
       />
 
-      {/* Main Form Card */}
-      <Card className="shadow-lg border-0 bg-white/95 backdrop-blur-sm">
+      <Card className="border-0 bg-white/95 shadow-lg backdrop-blur-sm">
         <CardHeader className="space-y-2">
           <div className="flex items-center space-x-2">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <FaHome className="w-5 h-5 text-blue-600" />
+            <div className="rounded-lg bg-blue-100 p-2">
+              <FaHome className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <CardTitle className="text-xl md:text-2xl text-slate-800">Property Price Predictor</CardTitle>
+              <CardTitle className="text-xl text-slate-800 md:text-2xl">
+                Property Price Predictor
+              </CardTitle>
               <CardDescription className="text-sm md:text-base">
                 Get AI-powered price estimates for Pune properties
               </CardDescription>
@@ -199,151 +225,149 @@ const PredictionForm: React.FC = () => {
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-6">
+        <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Location Section */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2 text-sm md:text-base font-medium text-slate-700">
-                <FaMapMarkerAlt className="w-4 h-4" />
-                <span>Location Details</span>
+            {/* Row 1: Locality & Carpet Area */}
+            <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3 md:gap-6">
+              <div className="space-y-2 md:col-span-2">
+                <Label
+                  htmlFor="localityName" // Popover trigger will have this ID
+                  className="flex items-center space-x-2 text-sm font-medium text-slate-700 md:text-base"
+                >
+                  <FaMapMarkerAlt className="h-4 w-4" />
+                  <span>Locality</span>
+                </Label>
+                <Popover open={localityOpen} onOpenChange={setLocalityOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="localityName"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={localityOpen}
+                      className="w-full justify-between"
+                    >
+                      {formData.localityName || "Select locality..."}
+                      <FaChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <Command>
+                      <CommandInput placeholder="Search locality..." />
+                      <CommandEmpty>No locality found.</CommandEmpty>
+                      <CommandGroup className="max-h-64 overflow-auto">
+                        {options.localityName.map((locality) => (
+                          <CommandItem
+                            key={locality}
+                            value={locality}
+                            onSelect={(currentValue) => {
+                              updateFormData(
+                                "localityName",
+                                currentValue === formData.localityName
+                                  ? ""
+                                  : currentValue,
+                              );
+                              setLocalityOpen(false);
+                            }}
+                          >
+                            <FaCheck
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                formData.localityName === locality
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
+                            {locality}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
-              
-              <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="locality" className="text-sm md:text-base">Locality</Label>
-                  <Popover open={localityOpen} onOpenChange={setLocalityOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={localityOpen}
-                        className="w-full justify-between"
-                      >
-                        {formData.localityName || "Select locality..."}
-                        <FaChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
-                      <Command>
-                        <CommandInput placeholder="Search locality..." />
-                        <CommandEmpty>No locality found.</CommandEmpty>
-                        <CommandGroup className="max-h-64 overflow-auto">
-                          {options.localityName.map((locality) => (
-                            <CommandItem
-                              key={locality}
-                              value={locality}
-                              onSelect={(currentValue) => {
-                                updateFormData('localityName', currentValue === formData.localityName ? "" : currentValue);
-                                setLocalityOpen(false);
-                              }}
-                            >
-                              <FaCheck
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  formData.localityName === locality ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {locality}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
+
+              <NumericInputWithControls
+                id="carpetArea"
+                label="Carpet Area (sqft)"
+                value={formData.carpetArea}
+                onChange={(value) => updateFormData("carpetArea", value)}
+                min={100}
+                max={10000}
+                step={50}
+                className="md:col-span-1"
+              />
             </div>
 
             {/* Property Details Section */}
             <div className="space-y-4">
-              <div className="flex items-center space-x-2 text-sm md:text-base font-medium text-slate-700">
-                <FaBuilding className="w-4 h-4" />
+              <div className="flex items-center space-x-2 pt-2 text-sm font-medium text-slate-700 md:text-base">
+                <FaBuilding className="h-4 w-4" />
                 <span>Property Details</span>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="carpetArea" className="text-sm md:text-base">Carpet Area (sqft)</Label>
-                  <Input
-                    id="carpetArea"
-                    type="number"
-                    min="100"
-                    max="10000"
-                    value={formData.carpetArea}
-                    onChange={(e) => updateFormData('carpetArea', parseInt(e.target.value) || 0)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="bedrooms" className="flex items-center space-x-1 text-sm md:text-base">
-                    <FaBed className="w-3 h-3" />
-                    <span>Bedrooms</span>
-                  </Label>
-                  <Input
-                    id="bedrooms"
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={formData.bedrooms}
-                    onChange={(e) => updateFormData('bedrooms', parseInt(e.target.value) || 1)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="bathrooms" className="flex items-center space-x-1 text-sm md:text-base">
-                    <FaBath className="w-3 h-3" />
-                    <span>Bathrooms</span>
-                  </Label>
-                  <Input
-                    id="bathrooms"
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={formData.bathrooms}
-                    onChange={(e) => updateFormData('bathrooms', parseInt(e.target.value) || 1)}
-                  />
-                </div>
-              </div>
-            </div>
 
-            {/* Floor Details */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="floorNumber" className="text-sm md:text-base">Current Floor</Label>
-                <Input
+              {/* Row 2: Bedrooms, Bathrooms, Floors */}
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
+                <NumericInputWithControls
+                  id="bedrooms"
+                  label="Bedrooms"
+                  labelIcon={<FaBed className="mr-1 h-3 w-3" />}
+                  value={formData.bedrooms}
+                  onChange={(value) => updateFormData("bedrooms", value)}
+                  min={1}
+                  max={10}
+                  step={1}
+                />
+                <NumericInputWithControls
+                  id="bathrooms"
+                  label="Bathrooms"
+                  labelIcon={<FaBath className="mr-1 h-3 w-3" />}
+                  value={formData.bathrooms}
+                  onChange={(value) => updateFormData("bathrooms", value)}
+                  min={1}
+                  max={10}
+                  step={1}
+                />
+                <NumericInputWithControls
                   id="floorNumber"
-                  type="number"
-                  min="0"
-                  max="50"
+                  label="Current Floor"
                   value={formData.floorNumber}
-                  onChange={(e) => updateFormData('floorNumber', parseInt(e.target.value) || 0)}
+                  onChange={(value) => updateFormData("floorNumber", value)}
+                  min={0}
+                  max={50}
+                  step={1}
                 />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="totalFloors" className="text-sm md:text-base">Total Floors</Label>
-                <Input
-                  id="totalFloors"
-                  type="number"
-                  min="1"
-                  max="50"
+                <NumericInputWithControls
+                  id="totalFloorNumber"
+                  label="Total Floors"
                   value={formData.totalFloorNumber}
-                  onChange={(e) => updateFormData('totalFloorNumber', parseInt(e.target.value) || 1)}
+                  onChange={(value) =>
+                    updateFormData("totalFloorNumber", value)
+                  }
+                  min={1} // Total floors cannot be less than 1
+                  max={50}
+                  step={1}
                 />
               </div>
             </div>
 
-            {/* Additional Details */}
+            {/* Additional Features Section */}
             <div className="space-y-4">
-              <div className="flex items-center space-x-2 text-sm md:text-base font-medium text-slate-700">
-                <FaPalette className="w-4 h-4" />
+              <div className="flex items-center space-x-2 text-sm font-medium text-slate-700 md:text-base">
+                <FaPalette className="h-4 w-4" />
                 <span>Additional Features</span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="transactionType" className="text-sm md:text-base">Transaction Type</Label>
-                  <Select value={formData.transactionType} onValueChange={(value) => updateFormData('transactionType', value)}>
-                    <SelectTrigger>
+                  <Label htmlFor="transactionType" className="text-sm md:text-base">
+                    Transaction Type
+                  </Label>
+                  <Select
+                    value={formData.transactionType}
+                    onValueChange={(value) =>
+                      updateFormData("transactionType", value)
+                    }
+                  >
+                    <SelectTrigger id="transactionType">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -355,11 +379,16 @@ const PredictionForm: React.FC = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
-                  <Label htmlFor="ageofcons" className="text-sm md:text-base">Age of Construction</Label>
-                  <Select value={formData.ageofcons} onValueChange={(value) => updateFormData('ageofcons', value)}>
-                    <SelectTrigger>
+                  <Label htmlFor="ageofcons" className="text-sm md:text-base">
+                    Age of Construction
+                  </Label>
+                  <Select
+                    value={formData.ageofcons}
+                    onValueChange={(value) => updateFormData("ageofcons", value)}
+                  >
+                    <SelectTrigger id="ageofcons">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -371,11 +400,16 @@ const PredictionForm: React.FC = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
-                  <Label htmlFor="furnished" className="text-sm md:text-base">Furnishing Status</Label>
-                  <Select value={formData.furnished} onValueChange={(value) => updateFormData('furnished', value)}>
-                    <SelectTrigger>
+                  <Label htmlFor="furnished" className="text-sm md:text-base">
+                    Furnishing Status
+                  </Label>
+                  <Select
+                    value={formData.furnished}
+                    onValueChange={(value) => updateFormData("furnished", value)}
+                  >
+                    <SelectTrigger id="furnished">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -390,7 +424,6 @@ const PredictionForm: React.FC = () => {
               </div>
             </div>
 
-            {/* Error Alert */}
             {formError && (
               <Alert className="border-red-200 bg-red-50">
                 <AlertDescription className="text-red-800">
