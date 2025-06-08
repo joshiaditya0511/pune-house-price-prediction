@@ -1,13 +1,13 @@
 {
-    "rewrites": [
-      {
-        "source": "/script.js",
-        "destination": "https://cloud.umami.is/script.js"
-      }
-    ],
-    "headers": [
+  "rewrites": [
     {
-      "source": "/(.*\\.onnx)",
+      "source": "/script.js",
+      "destination": "https://cloud.umami.is/script.js"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/models/:path*.onnx",
       "headers": [
         {
           "key": "Cache-Control",
@@ -20,10 +20,36 @@
       ]
     },
     {
-      "source": "/(.*(feature_weights|property_ids|property_metadata)\\.json)",
+      "source": "/models/:path*feature_weights.json",
       "headers": [
         {
-          "key": "Cache-Control", 
+          "key": "Cache-Control",
+          "value": "public, max-age=3600"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
+      ]
+    },
+    {
+      "source": "/models/:path*property_ids.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
+      ]
+    },
+    {
+      "source": "/models/:path*property_metadata.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
           "value": "public, max-age=3600"
         },
         {
