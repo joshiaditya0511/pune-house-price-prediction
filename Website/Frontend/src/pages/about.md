@@ -42,7 +42,7 @@ This project aims to provide realistic house price estimates for Pune properties
 
 **Key Features:**
 
-1.  **ML-Powered Price Prediction:** Utilizes a trained LightGBM model (achieving R² \( \approx 0.93 \), Median APE \( \approx 11 \% \)) to estimate prices based on user inputs.
+1.  **ML-Powered Price Prediction:** Utilizes a trained LightGBM model (achieving R² \( \~ 0.93 \), Median APE \( \~ 11 \% \)) to estimate prices based on user inputs.
 2.  **Nearest Neighbor Recommendations:** Finds and displays similar properties from the dataset based on feature similarity to the user's query.
 
 The system primarily operates via client-side computation for its core ML features, with a static frontend serving all necessary assets. Previously, it utilized a decoupled frontend-backend architecture.
