@@ -1,17 +1,21 @@
 ---
 // src/layouts/BaseLayout.astro
+// @ts-nocheck
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
+import SEO from "../components/SEO.astro"; // Import the new SEO component
 import "../styles/global.css";
 
 interface Props {
   title: string;
   description?: string;
+  image?: string;
 }
 
 const {
-  title = "PuneProp Predict",
-  description = "Predicting Pune house prices with AI",
+  title,
+  description = "Predicting Pune house prices with AI-powered insights.",
+  image,
 } = Astro.props;
 ---
 
@@ -19,11 +23,19 @@ const {
 <html lang="en" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
-    <meta name="description" content={description} />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
-    <title>{title}</title>
+
+    <!-- Favicon Links (paste code from realfavicongenerator.net here) -->
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="PupeProp Predict" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- SEO Component -->
+    <SEO title={title} description={description} image={image} />
 
     <!-- Umami Analytics -->
     <script 

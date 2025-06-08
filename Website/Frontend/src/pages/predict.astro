@@ -2,14 +2,17 @@
 // @ts-nocheck
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PredictionForm from '../components/PredictionForm';
+
+const pageTitle = "AI Property Valuation";
+const pageDescription = "Get instant, accurate property price predictions for Pune using advanced machine learning model. Enter property details to receive an estimate and see similar listings.";
 ---
 
-<BaseLayout title="Property Price Prediction - PuneProp Predict">
+<BaseLayout title={pageTitle} description={pageDescription}>
   <!-- Hero Section with Image Banner -->
   <section class="relative">
     <!-- Background Image -->
     <div class="h-56 md:h-110 bg-cover bg-center bg-no-repeat relative" 
-         style="background-image: url('/background-image.jpg');">
+         style="background-image: url('/background-image-2.jpg');">
       <!-- Dark overlay -->
       <div class="absolute inset-0 bg-black/50"></div>
       

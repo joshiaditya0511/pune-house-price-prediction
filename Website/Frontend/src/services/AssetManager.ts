@@ -21,37 +21,37 @@ export class AssetManager {
   private static memoryCache = new Map<string, any>();
   private static readonly ASSETS = [
     { 
-      url: '/prediction_pipeline_iteration_3.onnx', 
+      url: '/models/prediction_pipeline_iteration_3.onnx', 
       type: 'predictionSession',
       category: 'onnx',
       name: 'Prediction Model'
     },
     { 
-      url: '/recommendation_preprocessor.onnx', 
+      url: '/models/recommendation_preprocessor.onnx', 
       type: 'recPreprocessorSession',
       category: 'onnx',
       name: 'Recommendation Preprocessor'
     },
     { 
-      url: '/nearest_neighbors_model.onnx', 
+      url: '/models/nearest_neighbors_model.onnx', 
       type: 'recNnSession',
       category: 'onnx',
       name: 'Nearest Neighbors Model'
     },
     { 
-      url: '/recommendation_feature_weights.json', 
+      url: '/models/recommendation_feature_weights.json', 
       type: 'featureWeights',
       category: 'json',
       name: 'Feature Weights'
     },
     { 
-      url: '/property_ids.json', 
+      url: '/models/property_ids.json', 
       type: 'propertyIdMap',
       category: 'json',
       name: 'Property IDs'
     },
     { 
-      url: '/recommendations_property_metadata.json', 
+      url: '/models/recommendations_property_metadata.json', 
       type: 'propertyMetadata',
       category: 'json',
       name: 'Property Metadata'

@@ -1,0 +1,49 @@
+---
+// src/components/SEO.astro
+// @ts-nocheck
+import type { CollectionEntry } from "astro:content";
+
+// Define the properties the component will accept
+interface Props {
+  title: string;
+  description: string;
+  image?: string; // Optional: path to a social sharing image
+  frontmatter?: CollectionEntry<"blog">["data"]; // Example for blog posts
+}
+
+const {
+  title,
+  description,
+  image = "/social-card.png", // Default social sharing image
+} = Astro.props;
+
+// Construct the canonical URL for the current page
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+
+// Construct the full URL for the social sharing image
+const socialImageURL = new URL(image, Astro.site);
+
+const siteTitle = "PuneProp Predict";
+const formattedTitle = `${title} | ${siteTitle}`;
+---
+
+<!-- Standard SEO Meta Tags -->
+<title>{formattedTitle}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonicalURL} />
+
+<!-- OpenGraph Tags (for social media) -->
+<meta property="og:title" content={formattedTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonicalURL} />
+<meta property="og:image" content={socialImageURL} />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content={siteTitle} />
+<meta property="og:locale" content="en_US" />
+
+<!-- Twitter Card Tags -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={formattedTitle} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={socialImageURL} />
+<meta name="twitter:image:alt" content={`Social card for ${title}`} />

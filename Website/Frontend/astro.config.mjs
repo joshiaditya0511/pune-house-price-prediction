@@ -4,7 +4,7 @@ import { defineConfig } from 'astro/config';
 import vercel from '@astrojs/vercel';
 import tailwind from "@astrojs/tailwind";
 import react from '@astrojs/react';
-// import sitemap from "@astrojs/sitemap"; // Example: if you have sitemap
+import sitemap from "@astrojs/sitemap";
 
 // Import the plugins
 import wasm from "vite-plugin-wasm";
@@ -19,8 +19,8 @@ export default defineConfig({
   redirects: {
     "/": "/predict", // Redirect root path to /predict
   },
-  integrations: [react()],
-  // site: "https://your-deployment-url.vercel.app", // Replace with your actual URL
+  integrations: [react(), sitemap()],
+  site: "https://pune.adityajoshi.in",
   vite: {
     plugins: [wasm(), topLevelAwait(), tailwindcss()],
     optimizeDeps: {

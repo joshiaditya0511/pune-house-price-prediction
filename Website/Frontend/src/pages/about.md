@@ -1,7 +1,7 @@
 ---
 layout: ../layouts/MarkdownPageLayout.astro
 title: About the Project
-# description: This article uses the new MarkdownPageLayout.
+description: "Learn about the technology behind PuneProp Predict, including the machine learning models, tech stack, the project's features, future enhancements, and more."
 # publishDate: 2025-05-07
 author: Aditya Joshi
 displayTitle: false # Uncomment this if your markdown starts with its own H1
