@@ -16,9 +16,9 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   output: "static",
   adapter: vercel(),
-  redirects: {
-    "/": "/predict", // Redirect root path to /predict
-  },
+  // redirects: {
+  //   "/": "/predict", // Redirect root path to /predict
+  // },
   integrations: [react(), sitemap()],
   site: "https://pune.adityajoshi.in",
   vite: {
