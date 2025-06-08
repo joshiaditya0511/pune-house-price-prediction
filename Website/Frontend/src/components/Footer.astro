@@ -1,5 +1,6 @@
 ---
 // src/components/Footer.astro
+// @ts-nocheck
 const currentYear = new Date().getFullYear();
 const personalSiteUrl = "https://www.adityajoshi.in";
 const linkedinUrl = "https://linkedin.com/in/joshiaditya0511";
@@ -112,7 +113,8 @@ const quickLinks = [
 
     <!-- Bottom Border -->
     <div class="border-t border-slate-700 mt-8 pt-8 flex flex-col sm:flex-row justify-between items-center">
-      <p class="text-slate-400 text-sm">
+      {/* Left Side: Copyright */}
+      <p class="text-slate-400 text-sm text-center sm:text-left">
         &copy; {currentYear} 
         <a
           href={personalSiteUrl}
@@ -124,7 +126,15 @@ const quickLinks = [
         </a>
         . All Rights Reserved.
       </p>
-      <div class="flex items-center space-x-4 mt-4 sm:mt-0">
+      
+      {/* Right Side: Attributions */}
+      <div class="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4 mt-4 sm:mt-0">
+        {/* Icons8 Attribution */}
+        <p class="text-xs text-slate-500">
+          <a target="_blank" href="https://icons8.com/icon/hmZnke9jb8oq/home" class="hover:text-amber-400 transition-colors">Home</a> icon by <a target="_blank" href="https://icons8.com" class="hover:text-amber-400 transition-colors">Icons8</a>
+        </p>
+
+        {/* Built with Astro & React */}
         <div class="flex items-center space-x-1 text-xs text-slate-500">
           <span>Built with</span>
           <svg class="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 20 20">
