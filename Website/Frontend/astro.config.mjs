@@ -2,6 +2,7 @@
 import { defineConfig } from 'astro/config';
 
 import vercel from '@astrojs/vercel';
+import tailwind from "@astrojs/tailwind";
 import react from '@astrojs/react';
 // import sitemap from "@astrojs/sitemap"; // Example: if you have sitemap
 
@@ -17,9 +18,6 @@ export default defineConfig({
   adapter: vercel(),
   redirects: {
     "/": "/predict", // Redirect root path to /predict
-    // You can add more redirects here if needed
-    // '/old-page': '/new-page',
-    // '/another': { status: 302, destination: '/temp-location' }
   },
   integrations: [react()],
   // site: "https://your-deployment-url.vercel.app", // Replace with your actual URL

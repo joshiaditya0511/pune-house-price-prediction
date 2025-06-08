@@ -34,6 +34,8 @@ Welcome to the Pune House Price Predictor & Recommender project! This tool provi
 *   [Project Versions](#project-versions)
 *   [Future Enhancements](#future-enhancements)
 
+---
+
 ## Overview
 
 This project aims to provide realistic house price estimates for Pune properties based on various characteristics like area, number of bedrooms/bathrooms, age, and location. It also suggests similar properties from a scraped dataset.
@@ -115,6 +117,8 @@ When a user requests a prediction and recommendations via the web interface:
 4.  **Frontend Response Handling:** The frontend JavaScript receives the response from `/predict`, updates the UI to display the price, then receives the response from `/recommend` and updates the UI again to display the recommendations.
 5.  **UI Update:** React components render the predicted price and the list of recommended properties.
 
+---
+
 ## Methodology
 
 This section details the offline steps taken to acquire data, build the models, and prepare the necessary artifacts used by the backend API during runtime.
@@ -172,6 +176,8 @@ A multi-stage process was used to select the most relevant features for the pred
     *   Scikit-learn's `NearestNeighbors` using a Euclidean distance metric was fitted on the feature vectors of all properties in the dataset (train + test combined).
     *   Metadata (like price, area, address snippet, image URL - if available) for all properties was stored separately, indexed to match the `NearestNeighbors` data, allowing retrieval of details for the recommended properties.
 
+---
+
 ## Technology Stack
 
 *   **Data Science & ML:** Python, Pandas, Scikit-learn, Selenium, `ydata-profiling`, Jupyter Notebooks, `ONNX`
@@ -179,6 +185,8 @@ A multi-stage process was used to select the most relevant features for the pred
 *   **Frontend:** Astro.js, React, Bootstrap
 *   **Deployment:** Docker, Docker Compose, AWS EC2 (Ubuntu), NGINX, Vercel
 *   **Version Control:** Git, GitHub
+
+---
 
 ## Deployment
 
@@ -213,6 +221,7 @@ The application follows a decoupled frontend-backend architecture:
     *   NGINX is used as a reverse proxy and for handling HTTPS.
     *   Accessible via a dedicated subdomain: `phpp-api.adityajoshi.in` (Note: This API is primarily for the frontend's use).
 
+---
 
 ## Project Versions
 
@@ -224,6 +233,8 @@ The project has evolved through several iterations:
 *   **Version 2.0 (Current):** Major architectural shift to client-side ML inference using ONNX. All prediction and recommendation logic now runs in the browser. Introduced feature weighting in JavaScript for recommendations. Backend API for ML computation decommissioned.
 
 *(Code and artifacts for each version can be found in the respective `Iteration_X` folders.)*
+
+---
 
 ## Future Enhancements
 

@@ -1,12 +1,44 @@
 ---
-// Example: src/pages/predict.astro
+// src/pages/insights.astro
+// @ts-nocheck
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { Button } from '@/components/ui/button'; // Import ShadCN Button
+import { BarChart3 } from 'lucide-react'; // Import a relevant icon
 ---
-<BaseLayout title="Predictor - PuneProp Predict">
-  <div class="container py-5">
-    <h1>Insights</h1>
-    <p></p>
-    <h3 style="color: red;">Coming Soon!</h3>
-    <!-- Add <PredictionForm client:load /> component here later -->
+
+<BaseLayout title="Insights - PuneProp Predict">
+  <div class="flex items-center justify-center py-16 md:py-24">
+    <div class="text-center max-w-2xl mx-auto px-4">
+      
+      <!-- Icon -->
+      <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-blue-100">
+        <BarChart3 className="h-10 w-10 text-blue-600" strokeWidth={1.5} />
+      </div>
+
+      <!-- Heading -->
+      <h1 class="text-3xl font-bold tracking-tight text-slate-800 sm:text-4xl">
+        Insights Coming Soon
+      </h1>
+
+      <!-- Description -->
+      <p class="mt-4 text-lg leading-8 text-slate-600">
+        Check back soon to explore interactive charts, other data analysis.
+      </p>
+
+      <!-- Call to Action Buttons -->
+      <div class="mt-10 flex items-center justify-center gap-x-4">
+        <a href="/predict">
+          <Button size="lg">
+            Go to Predictor
+          </Button>
+        </a>
+        <a href="/about">
+          <Button size="lg" variant="outline">
+            About the Project
+          </Button>
+        </a>
+      </div>
+
+    </div>
   </div>
 </BaseLayout>

@@ -1,137 +1,51 @@
 ---
+// @ts-nocheck
 // src/layouts/MarkdownPageLayout.astro
-import BaseLayout from "./BaseLayout.astro"; // Import your existing BaseLayout
+import BaseLayout from "./BaseLayout.astro";
 
-// The `frontmatter` prop is automatically passed from your Markdown file
-// when this layout is specified in the Markdown's frontmatter.
 const { frontmatter } = Astro.props;
 
-// You can add default values or transformations here if needed
 const pageTitle = frontmatter.title || "Markdown Page";
 const pageDescription = frontmatter.description || "Content from a Markdown file.";
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>
-  {/* This is where the content from your Markdown file will be injected */}
-  <div class="container py-5"> {/* Optional: Bootstrap container for content */}
-    <article class="markdown-content">
-      {
-        frontmatter.displayTitle !== false && (
-          <h1>{frontmatter.title}</h1>
-        )
-      }
-      {
-        frontmatter.publishDate && (
-          <p class="text-muted">
-            <em>
-              Published on: {new Date(frontmatter.publishDate).toLocaleDateString()}
-              {frontmatter.author && ` by ${frontmatter.author}`}
-            </em>
-          </p>
-        )
-      }
-      <slot /> {/* The actual Markdown content goes here */}
-    </article>
+  <div class="bg-white py-12 md:py-16">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <article
+        class="
+          prose prose-slate
+          max-w-none
+          text-base lg:text-lg
+          prose-p:leading-relaxed prose-p:mb-5
+          prose-headings:mb-3 prose-headings:mt-10
+          prose-li:my-1
+          prose-headings:font-bold prose-headings:text-slate-800
+          prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
+          prose-blockquote:border-blue-300 prose-blockquote:text-slate-600
+          prose-code:bg-blue-50 prose-code:text-blue-700 prose-code:font-semibold prose-code:rounded-sm prose-code:px-1.5 prose-code:py-0.5
+          prose-img:rounded-lg prose-img:shadow-md
+        "
+      >
+        {
+          frontmatter.displayTitle !== false && (
+            <h1 class="!mb-2">{frontmatter.title}</h1>
+          )
+        }
+        {
+          frontmatter.publishDate && (
+            <p class="text-slate-500 !mt-2 !mb-8">
+              <em>
+                Published on: {new Date(frontmatter.publishDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                {frontmatter.author && ` by ${frontmatter.author}`}
+              </em>
+            </p>
+          )
+        }
+        
+        <!-- The actual Markdown content goes here and will be styled by the 'prose' class -->
+        <slot />
+      </article>
+    </div>
   </div>
-
-  <style is:global>
-    /* 
-      You can add styles here that are specific to how Markdown content 
-      should look when using this layout. 
-      Using 'is:global' if you want to style raw HTML elements generated 
-      from Markdown without needing to wrap them further, or scope them
-      to the '.markdown-content' class.
-    */
-
-    .markdown-content h1,
-    .markdown-content h2,
-    .markdown-content h3,
-    .markdown-content h4,
-    .markdown-content h5,
-    .markdown-content h6 {
-      margin-top: 1.5em;
-      margin-bottom: 0.5em;
-      font-weight: 600;
-    }
-
-    .markdown-content h1 {
-      font-size: 2.25rem; /* Example size */
-      border-bottom: 1px solid #eee;
-      padding-bottom: 0.3em;
-    }
-
-    .markdown-content h2 {
-      font-size: 1.75rem; /* Example size */
-    }
-
-    .markdown-content p {
-      line-height: 1.7;
-      margin-bottom: 1rem;
-    }
-
-    .markdown-content a {
-      color: var(--bs-primary); /* Using a Bootstrap variable as an example */
-      text-decoration: none;
-    }
-
-    .markdown-content a:hover {
-      text-decoration: underline;
-    }
-
-    .markdown-content ul,
-    .markdown-content ol {
-      padding-left: 2rem;
-      margin-bottom: 1rem;
-    }
-
-    .markdown-content blockquote {
-      border-left: 4px solid #ccc;
-      padding-left: 1rem;
-      margin-left: 0;
-      font-style: italic;
-      color: #555;
-    }
-
-    .markdown-content pre {
-      background-color: #f8f9fa; /* Light background for code blocks */
-      border: 1px solid #e9ecef;
-      padding: 1em;
-      border-radius: 0.25rem;
-      overflow-x: auto;
-      font-size: 0.9em;
-    }
-
-    .markdown-content code:not(pre > code) {
-      background-color: #e9ecef;
-      padding: 0.2em 0.4em;
-      border-radius: 3px;
-      font-size: 0.9em;
-    }
-
-    .markdown-content img {
-      max-width: 100%;
-      height: auto;
-      border-radius: 0.25rem;
-      margin-top: 1rem;
-      margin-bottom: 1rem;
-    }
-
-    .markdown-content table {
-      width: 100%;
-      margin-bottom: 1rem;
-      border-collapse: collapse;
-    }
-
-    .markdown-content th,
-    .markdown-content td {
-      border: 1px solid #dee2e6;
-      padding: 0.75rem;
-      vertical-align: top;
-    }
-
-    .markdown-content th {
-      font-weight: bold;
-      background-color: #f8f9fa;
-    }
-  </style>
 </BaseLayout>
